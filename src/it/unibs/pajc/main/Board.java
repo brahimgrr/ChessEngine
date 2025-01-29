@@ -1,15 +1,18 @@
 package it.unibs.pajc.main;
 
-import it.unibs.pajc.pieces.*;
+import it.unibs.pajc.model.Piece;
+import it.unibs.pajc.model.pieces.*;
 
 import javax.swing.*;
 import java.awt.*;
 import java.util.ArrayList;
 
 public class Board extends JPanel {
-    public static final int tileSize = 85;
+    public int tileSize = 85;
     public static final int cols = 8;
     public static final int rows = 8;
+    
+    public boolean showPieces = false;
 
     public final ArrayList<Piece> pieces;
 
@@ -19,7 +22,7 @@ public class Board extends JPanel {
         addPieces();
     }
 
-    private void addPieces() {
+    public void addPieces() {
         boolean isWhite = true;
         int pawnRow = 1;
         int pieceRow = 0;
@@ -45,11 +48,16 @@ public class Board extends JPanel {
             pawnRow = 6;
             isWhite = false;
         }
+        //repaint();
     }
 
     @Override
     protected void paintComponent(Graphics g) {
         Graphics2D g2d = (Graphics2D) g;
+
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+        int tileSize = getTileSize();
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < cols; c++) {
                 g2d.setColor((r+c) % 2 == 0 ? new Color	(118,150,86) : new Color	(238,238,210));
@@ -57,8 +65,24 @@ public class Board extends JPanel {
             }
         }
 
-        for (Piece p : pieces) {
-            p.paint(g2d);
+        if (showPieces) {
+        	for (Piece p : pieces) {
+                p.paint(this ,g2d);
+            }
         }
     }
+    
+    public void showPieces(boolean value) {
+    	this.showPieces = !showPieces;
+    	repaint();
+    }
+    
+    public int getTileSize() {
+        int w = getWidth();
+        int h = getHeight();
+
+        int minDim = (Math.min(w, h) / 8);
+        return Math.max(85, minDim);
+    }
+
 }

@@ -1,6 +1,7 @@
-package it.unibs.pajc.pieces;
+package it.unibs.pajc.model.pieces;
 
 import it.unibs.pajc.main.Board;
+import it.unibs.pajc.model.Piece;
 
 public class Rook extends Piece{
     public static int sheetPosition = 4;

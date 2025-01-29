@@ -1,4 +1,4 @@
-package it.unibs.pajc.pieces;
+package it.unibs.pajc.model.pieces;
 
 import it.unibs.pajc.main.Board;
 
@@ -10,7 +10,6 @@ public class Piece {
     //Position
     public int col, row;
     public int xPos, yPos;
-
     public boolean isWhite;
     public String name;
     public int value;
@@ -34,10 +33,13 @@ public class Piece {
         this.col = col;
         this.row = row;
         this.isWhite = isWhite;
-        this.xPos = col * Board.tileSize;
-        this.yPos = row * Board.tileSize;
+
+        int tileSize = board.getTileSize();
+
+        this.xPos = col * tileSize;
+        this.yPos = row * tileSize;
         this.name = this.getClass().getSimpleName();
-        this.pieceImage = sheet.getSubimage(sheetPosition * sheetScale, isWhite ? 0 : sheetScale, sheetScale, sheetScale).getScaledInstance(Board.tileSize, Board.tileSize, BufferedImage.SCALE_SMOOTH);
+        this.pieceImage = sheet.getSubimage(sheetPosition * sheetScale, isWhite ? 0 : sheetScale, sheetScale, sheetScale).getScaledInstance(tileSize, tileSize, BufferedImage.SCALE_SMOOTH);
     }
 
     public void paint(Graphics2D g2d) {

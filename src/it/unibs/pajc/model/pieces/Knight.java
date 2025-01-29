@@ -1,8 +1,7 @@
-package it.unibs.pajc.pieces;
+package it.unibs.pajc.model.pieces;
 
 import it.unibs.pajc.main.Board;
-
-import java.awt.image.BufferedImage;
+import it.unibs.pajc.model.Piece;
 
 public class Knight extends Piece {
     public static int sheetPosition = 3;
