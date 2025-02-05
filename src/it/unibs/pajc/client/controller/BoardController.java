@@ -11,12 +11,15 @@ import java.awt.event.WindowAdapter;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * ChessBoardView controller
+ */
 public class BoardController {
     private final ChessBoardView view;
     private final MainFrame frame;
 
     public BoardController() {
-        this.frame = new MainFrame(this);
+        this.frame = new MainFrame();
         this.view = frame.getChessBoardView();
         this.frame.setVisible(true);
     }
@@ -26,33 +29,19 @@ public class BoardController {
     }
 
     public void setPosition(String fenPosition) {
-        System.out.println("CONTROLLER SET POSITION THREAD: " + Thread.currentThread().getName());
         view.setPieces(fenPosition);
     }
-
-    public void setLegalMoves(String fenLegalMoves) {
-        view.setLegalMoves(null);
-    }
-
-    public void setLastMove(String fenLastMove) {
-        view.setLastMove(null);
-    }
-
 
     public Move requireMove(PieceColor color) throws InterruptedException {
         return view.requireMove(color);
     }
 
-    public void restart() {
-        view.resetView();
-    }
-
-    public ChessBoardView getView() {
-        return view;
-    }
-
     public void setLegalMoves(Map<Location, Set<Move>> legalMoves) {
         view.setLegalMoves(legalMoves);
+    }
+
+    public void setLastMove(Move move) {
+        view.setLastMove(move);
     }
 
     public void setOnCloseOperation(WindowAdapter w) {

@@ -3,104 +3,195 @@ package it.unibs.pajc.client.controller;
 import it.unibs.pajc.game.controller.Player;
 import it.unibs.pajc.game.model.Move;
 import it.unibs.pajc.game.model.MoveMap;
+import it.unibs.pajc.game.model.enums.GameState;
 import it.unibs.pajc.game.model.enums.PieceColor;
 import it.unibs.pajc.server.model.NetPacket;
 
 import javax.swing.*;
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 
+/**
+ * Controller to handle a game with a remote opponent
+ */
 public class RemoteGameController implements Runnable {
-    private final int gameID;
-    private final Player player;
+    //game unique identifier
+    private final int gameId;
+    //gui board player
+    private final GuiPlayer player;
+    //server ip
     private final String ip;
+    //server port
     private final int port;
+    //connection port
     private Socket socket;
-
+    //flag if user wants to play against a bot
+    private final boolean requireBot;
+    //thread on which the game is launched
     private Thread gameThread;
-    private boolean isPlaying = false;
-
+    //playing flag, used for threading
+    private boolean isPlaying;
+    //object data streams
     private ObjectInputStream inStream;
     private ObjectOutputStream outStream;
 
-    public RemoteGameController(int gameId, GuiPlayer guiPlayer, String ip, int port) {
-        this.gameID = gameId;
+    /**
+     * RemoteGameController constructor
+     * @param gameId game identifier
+     * @param guiPlayer gui board player
+     * @param ip server ip
+     * @param port server port
+     * @param requireBot flag to request game against a bot
+     */
+    public RemoteGameController(int gameId, GuiPlayer guiPlayer, String ip, int port, boolean requireBot) {
+        this.gameId = gameId;
         this.player = guiPlayer;
         this.ip = ip;
         this.port = port;
+        this.requireBot = requireBot;
+        this.isPlaying = true;
     }
 
     @Override
     public void run() {
         gameThread = Thread.currentThread();
-        isPlaying = true;
         try {
-            Socket socket = new Socket(ip, port);
-            handleConnection(socket);
-        } catch (IOException e) {
+            log("Launched!");
+            socket = new Socket(ip, port);
+            outStream = new ObjectOutputStream(socket.getOutputStream());
+            outStream.flush();  // Ensure stream header is written
+            inStream = new ObjectInputStream(socket.getInputStream());
+
+            while (isPlaying) {
+                gameLoop();
+            }
+        } catch (IOException | InterruptedException e) {
+            log("Game interrupted!");
+            player.setGameState(GameState.CONNECTION_LOST);
             player.terminate();
-            JOptionPane.showMessageDialog(JOptionPane.getRootFrame(), "Unable to connect to server!", "Error", JOptionPane.ERROR_MESSAGE);
-            throw new RuntimeException(e);
+            Thread.currentThread().interrupt(); // Preserve the interrupt flag
         } catch (ClassNotFoundException e) {
             throw new RuntimeException(e);
+        } finally {
+            if (socket != null && !socket.isClosed()) {
+                try {
+                    socket.close();
+                } catch (IOException e) {
+                }
+            }
         }
+        log("Game loop terminated!");
     }
 
-    private void handleConnection(Socket socket) throws IOException, ClassNotFoundException {
-        this.outStream = new ObjectOutputStream(socket.getOutputStream());
-        this.outStream.flush();  // Ensure stream header is written
-        this.inStream = new ObjectInputStream(socket.getInputStream());
+    /**
+     * Main game loop
+     * @throws IOException
+     * @throws ClassNotFoundException
+     * @throws InterruptedException
+     */
+    private void gameLoop() throws IOException, ClassNotFoundException, InterruptedException {
+        Object obj = this.inStream.readObject();
+        gameLog(player.getColor() + " " + "PACKET RECEIVED");
+        if (! (obj instanceof NetPacket packet)) {
+            return;
+        }
+        switch (packet.type) {
+            case NetPacket.SET_POSITION_FEN -> {
+                gameLog("Set position fen");
+                String fen = (String) packet.data;
+                player.setPosition(fen);
+            }
+            case NetPacket.SET_LEGAL_MOVES -> {
+                gameLog("Set legal moves");
+                MoveMap moveMap = (MoveMap) packet.data;
+                player.setLegalMoves(moveMap);
+            }
+            case NetPacket.REQUEST_MOVE -> {
+                gameLog("request move");
+                Move move = null;
+                try {
+                    move = player.requireMove();
+                } catch (Exception e) {
+                    throw new InterruptedException(e.getMessage());
+                }
 
-        while (true) {
-            Object obj = this.inStream.readObject();
-            System.out.println(player.getColor() + " " + "PACKET RECEIVED");
-            if (obj instanceof NetPacket packet) {
-                if (NetPacket.SET_POSITION_FEN.equals(packet.type)) {
-                    System.out.println("Set position fen");
-                    String fen = (String) packet.data;
-                    player.setPosition(fen);
+                if (move == null) {
+                    log("No valid move received!");
+                    isPlaying = false;
+                    return; // Prevent an invalid move from breaking the game loop
                 }
-                else if (NetPacket.SET_LEGAL_MOVES.equals(packet.type)) {
-                    System.out.println("Set legal moves");
-                    MoveMap moveMap = (MoveMap) packet.data;
-                    player.setLegalMoves(moveMap);
+                gameLog("move made");
+                NetPacket responsePacket = new NetPacket(NetPacket.RESPONSE_MOVE, move);
+                outStream.writeObject(responsePacket);
+                gameLog("MOVE SENT");
+            }
+            case NetPacket.SET_PLAYER_COLOR -> {
+                gameLog("Set player color");
+                PieceColor color = (PieceColor) packet.data;
+                player.setColor(color);
+            }
+            case NetPacket.REQUIRE_COLOR -> {
+                gameLog("require color");
+                NetPacket responsePacket;
+                if (requireBot) {
+                    responsePacket = new NetPacket(NetPacket.RESPONSE_COLOR, player.getColor(), true);
                 }
-                else if (NetPacket.REQUEST_MOVE.equals(packet.type)) {
-                    System.out.println("request move");
-                    Move move = null;
-                    try {
-                        move = player.requireMove();
-                    }
-                    catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                    System.out.println("move made");
-                    NetPacket responsePacket = new NetPacket(NetPacket.RESPONSE_MOVE, move);
-                    outStream.writeObject(responsePacket);
-                    System.out.println("MOVE SENT");
+                else {
+                    responsePacket = new NetPacket(NetPacket.RESPONSE_COLOR, player.getColor());
                 }
-                else if (NetPacket.SET_PLAYER_COLOR.equals(packet.type)) {
-                    System.out.println("Set player color");
-                    PieceColor color = (PieceColor) packet.data;
-                    player.setColor(color);
+                outStream.writeObject(responsePacket);
+            }
+            case NetPacket.SET_GAME_STATE -> {
+                gameLog("Set game state");
+                GameState state = (GameState) packet.data;
+                player.setGameState(state);
+                if (state != GameState.PLAYING) {
+                    player.terminate();
                 }
-                else if (NetPacket.REQUIRE_COLOR.equals(packet.type)) {
-                    System.out.println("require color");
-                    NetPacket responsePacket = new NetPacket(NetPacket.RESPONSE_COLOR, player.getColor());
-                    outStream.writeObject(responsePacket);
-                }
+            }
+            default -> {
+                gameLog("INVALID PACKET");
             }
         }
     }
 
-
+    /**
+     * method used to stop the current game
+     */
     public void stopGame() {
-        isPlaying = false;
-        System.out.println("Interrupting game loop: " + gameThread.getName());
-        if (gameThread != null) {
-            gameThread.interrupt(); // Interrupt the game thread
+        // Close the socket to break the blocking readObject call
+        try {
+            if (socket != null && !socket.isClosed()) {
+                socket.close();
+                log("Socket closed");
+            }
+        } catch (IOException e) {
+            log("Error closing socket: " + e.getMessage());
         }
+
+        // Interrupt the thread if it's still running
+        if (gameThread != null && gameThread != Thread.currentThread()) {
+            gameThread.interrupt();
+            log("Game thread interrupted: " + gameId);
+        }
+    }
+
+    /**
+     * prints a message indicating the current game
+     * @param msg message to be visualized
+     */
+    private void log(String msg) {
+        System.out.println("Game " + gameId + " - " + msg);
+    }
+
+    /**
+     * prints a message indicating the current game state
+     * @param msg message to be visualized
+     */
+    private void gameLog(String msg) {
+        //gameLog("Game " + gameId + " - " + msg);
     }
 }

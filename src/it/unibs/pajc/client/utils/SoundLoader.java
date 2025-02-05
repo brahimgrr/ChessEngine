@@ -6,6 +6,9 @@ import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
 
+/**
+ * Enum to handle sound loading
+ */
 public enum SoundLoader {
 	PROMOTE("promote.wav"),
 	NOTIFY("notify.wav"),
@@ -14,19 +17,22 @@ public enum SoundLoader {
 	CASTLE("castle.wav"),
 	CAPTURE("capture.wav");
 	
-	String finelname;
-	Clip clip;
+	final String finelname;
+	final Clip clip;
 	
-	SoundLoader(String fname) {
-		this.finelname = fname;
-		this.clip = loadSoundTrack(fname);
+	SoundLoader(String fileName) {
+		this.finelname = fileName;
+		this.clip = loadSoundTrack(fileName);
 	}
-	
-	private Clip loadSoundTrack(String fname) {
-		
-		try {
 
-			File audioFile = new File(System.getProperty("user.dir") + "/res/sounds/" + fname);
+	/**
+	 * retrieves an audio clip given a file name
+	 * @param fileName audio clip file name
+	 * @return the requested audio clip
+	 */
+	private Clip loadSoundTrack(String fileName) {
+		try {
+			File audioFile = new File(System.getProperty("user.dir") + "/res/sounds/" + fileName);
 
 			AudioInputStream audioStream = AudioSystem.getAudioInputStream(audioFile);
 			
@@ -41,7 +47,10 @@ public enum SoundLoader {
 		
 		return null;
 	}
-	
+
+	/**
+	 * Play current sound
+	 */
 	public void play() {
 		if(clip == null || clip.isRunning())
 			return;

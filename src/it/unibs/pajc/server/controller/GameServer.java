@@ -1,29 +1,40 @@
 package it.unibs.pajc.server.controller;
 
+import it.unibs.pajc.engine.EnginePlayer;
 import it.unibs.pajc.game.controller.GameController;
+import it.unibs.pajc.game.controller.Player;
 import it.unibs.pajc.game.model.enums.PieceColor;
+import it.unibs.pajc.server.utils.NetworkConstants;
 
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Observable;
-import java.util.Stack;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
+/**
+ * Game server
+ */
 public class GameServer {
-    private static final int PORT = 12345;
-
+    //thread executor responsible for matching and launching games
     private static final ExecutorService executor = Executors.newCachedThreadPool();
+    private static final ThreadPoolExecutor threadPoolExecutor = (ThreadPoolExecutor) executor;
 
+    //debugging flag
+    private static final boolean DEBUG = true;
+
+    //initiated games counter
     private static int gameCounter = 0;
 
-    private static final Stack<RemotePlayer> whitePlayers = new Stack<>();
-    private static final Stack<RemotePlayer> blackPlayers = new Stack<>();
-
-    private static final Map<PieceColor, Stack<RemotePlayer>> playersMap = new HashMap<>();
+    //white players buffer
+    private static final Queue<RemotePlayer> whitePlayers = new ArrayDeque<>();
+    //black players buffer
+    private static final Queue<RemotePlayer> blackPlayers = new ArrayDeque<>();
+    //pending players buffer
+    private static final Map<PieceColor, Queue<RemotePlayer>> playersMap = new HashMap<>();
     static {
         playersMap.put(PieceColor.BLACK, blackPlayers);
         playersMap.put(PieceColor.WHITE, whitePlayers);
@@ -32,72 +43,116 @@ public class GameServer {
     public static void main(String[] args) {
         System.out.println("Starting Game Server...");
 
-        /*try (ServerSocket serverSocket = new ServerSocket(PORT)) {
-            System.out.println("Game Server running.");
-            System.out.println("Port: " + PORT);
-
-            while (true) {
-                System.out.println("Waiting for clients...");
-                System.out.println();
-
-                Socket whitePlayerSocket = serverSocket.accept();
-                System.out.println("White player connected: " + whitePlayerSocket.getInetAddress());
-
-                Socket blackPlayerSocket = serverSocket.accept();
-                System.out.println("Black player connected: " + blackPlayerSocket.getInetAddress());
-
-                RemotePlayer whitePlayer = new RemotePlayer(PieceColor.WHITE, whitePlayerSocket);
-                RemotePlayer blackPlayer = new RemotePlayer(PieceColor.BLACK, blackPlayerSocket);
-                executor.execute(new GameController(gameCounter, whitePlayer, blackPlayer));
-                gameCounter++;
-
-                tryGameMatch();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            executor.shutdown();
-        }*/
-        try (ServerSocket serverSocket = new ServerSocket(PORT)) {
-            System.out.println("Game Server running on port: " + PORT);
+        try (ServerSocket serverSocket = new ServerSocket(NetworkConstants.SERVER_PORT)) {
+            System.out.println("Game Server running on port: " + NetworkConstants.SERVER_PORT);
 
             while (true) {
                 System.out.println("Waiting for clients...");
                 Socket playerSocket = serverSocket.accept();
                 System.out.println("Player connected: " + playerSocket.getInetAddress());
 
-                RemotePlayer player = new RemotePlayer(playerSocket);
-                executor.execute(() -> handlePlayerConnection(player));
+                executor.execute(() -> handlePlayerConnection(playerSocket));
+                printExecutorState();
             }
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
-            executor.shutdown();
+            //executor termination
+            try {
+                executor.shutdown();
+                if (!executor.awaitTermination(1000, TimeUnit.MILLISECONDS)) {
+                    executor.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                executor.shutdownNow();
+            }
         }
     }
 
-    private static void handlePlayerConnection(RemotePlayer player) {
+
+    /**
+     * performs a handshake with the remote player and adds it to the
+     * correct buffer
+     * tries to match the player with a valid opponent
+     * @param playerSocket player socket
+     */
+    private static void handlePlayerConnection(Socket playerSocket) {
         try {
-            player.performHandshake(); // Ensures the player gets assigned a color
-            PieceColor assignedColor = player.getColor();
-            synchronized (playersMap) {
-                playersMap.get(assignedColor).push(player);
-                System.out.println("Player assigned color: " + assignedColor);
-                tryGameMatch();
+            RemotePlayer player = new RemotePlayer(playerSocket);
+            // handshake, make sure the player gets assigned a color
+            PieceColor assignedColor = player.requireColor();
+            if (player.requireBot()) {
+                botGameMatch(player);
+            }
+            else {
+                synchronized (playersMap) {
+                    playersMap.get(assignedColor).add(player);
+                    System.out.println("Player assigned color: " + assignedColor);
+                    tryGameMatch();
+                }
             }
         } catch (IOException e) {
+            try {
+                if (playerSocket != null && playerSocket.isConnected()) {
+                    playerSocket.close();
+                }
+            } catch (IOException es) {
+                es.printStackTrace();
+            }
             e.printStackTrace();
         }
     }
 
+    /**
+     * launch a game matching the remote player
+     * with a BOT, assigning the correct color
+     * @param player remote player
+     */
+    private static void botGameMatch(RemotePlayer player) {
+        Player whitePlayer;
+        Player blackPlayer;
+        //Game controller automatically assigns a BOT when a player is null
+        if (player.getColor() == PieceColor.WHITE) {
+            whitePlayer = player;
+            blackPlayer = null;
+        }
+        else {
+            whitePlayer = null;
+            blackPlayer = player;
+        }
+        System.out.println("Starting BOT game " + gameCounter);
+        executor.execute(new GameController(gameCounter++, whitePlayer, blackPlayer));
+        printExecutorState();
+    }
+
+    /**
+     * try to launch a game matching a white remote
+     * player against a black remote player
+     */
     private static void tryGameMatch() {
         synchronized (playersMap) {
             if (!whitePlayers.isEmpty() && !blackPlayers.isEmpty()) {
-                RemotePlayer whitePlayer = whitePlayers.pop();
-                RemotePlayer blackPlayer = blackPlayers.pop();
+                Player whitePlayer = whitePlayers.poll();
+                Player blackPlayer = blackPlayers.poll();
                 System.out.println("Starting game " + gameCounter);
                 executor.execute(new GameController(gameCounter++, whitePlayer, blackPlayer));
+                printExecutorState();
             }
         }
+    }
+
+    /**
+     * prints the state of the current pool executor
+     */
+    private static void printExecutorState() {
+        if (!DEBUG) {
+            return;
+        }
+        System.out.println();
+        System.out.println(" - Executor pool state -");
+        System.out.println("Active count: " + threadPoolExecutor.getActiveCount());
+        System.out.println("Completed task: " + threadPoolExecutor.getCompletedTaskCount());
+        System.out.println("Pool size: " + threadPoolExecutor.getPoolSize());
+        System.out.println();
     }
 }

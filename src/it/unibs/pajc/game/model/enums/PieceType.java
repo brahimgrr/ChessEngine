@@ -3,19 +3,20 @@ package it.unibs.pajc.game.model.enums;
 public enum PieceType {
     KING_BLACK("King", "K", Integer.MAX_VALUE, PieceColor.BLACK),
     KING_WHITE("King", "k", Integer.MAX_VALUE, PieceColor.WHITE),
-    QUEEN_BLACK("Queen", "Q", 9, PieceColor.BLACK),
-    QUEEN_WHITE("Queen", "q", 9, PieceColor.WHITE),
-    ROOK_BLACK("Rook", "R", 5, PieceColor.BLACK),
-    ROOK_WHITE("Rook", "r", 5, PieceColor.WHITE),
-    KNIGHT_BLACK("Knight", "N", 3, PieceColor.BLACK),
-    KNIGHT_WHITE("Knight", "n", 3, PieceColor.WHITE),
-    BISHOP_BLACK("Bishop", "B", 3, PieceColor.BLACK),
-    BISHOP_WHITE("Bishop", "b", 3, PieceColor.WHITE),
-    PAWN_BLACK("Pawn", "P", 1, PieceColor.BLACK),
-    PAWN_WHITE("Pawn", "p", 1, PieceColor.WHITE);
+    QUEEN_BLACK("Queen", "Q", 900, PieceColor.BLACK),
+    QUEEN_WHITE("Queen", "q", 900, PieceColor.WHITE),
+    ROOK_BLACK("Rook", "R", 500, PieceColor.BLACK),
+    ROOK_WHITE("Rook", "r", 500, PieceColor.WHITE),
+    KNIGHT_BLACK("Knight", "N", 300, PieceColor.BLACK),
+    KNIGHT_WHITE("Knight", "n", 300, PieceColor.WHITE),
+    BISHOP_BLACK("Bishop", "B", 300, PieceColor.BLACK),
+    BISHOP_WHITE("Bishop", "b", 300, PieceColor.WHITE),
+    PAWN_BLACK("Pawn", "P", 100, PieceColor.BLACK),
+    PAWN_WHITE("Pawn", "p", 100, PieceColor.WHITE);
 
     public final String name;
     public final String shortName;
+    //piece standard value
     public final int value;
     public final PieceColor color;
 

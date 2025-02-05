@@ -7,16 +7,21 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.util.HashMap;
 
+/**
+ * Util class to handle piece image loading
+ */
 public class ImageLoader {
     private static BufferedImage sheet;
     static {
         try {
+            //Image containing all pieces
             sheet = ImageIO.read(ClassLoader.getSystemResourceAsStream("images/pieces.png"));
         }
         catch (Exception e) {
             e.printStackTrace();
         }
     }
+    //map containing all piece images
     public static final HashMap<PieceType, Image> pieceImages = new HashMap<>();
     static {
         int sheetScale = sheet.getWidth() / 6;
