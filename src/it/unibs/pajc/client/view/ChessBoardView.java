@@ -1,6 +1,6 @@
 package it.unibs.pajc.client.view;
 
-import it.unibs.pajc.client.utils.Constants;
+import it.unibs.pajc.client.controller.BoardController;
 import it.unibs.pajc.game.model.Location;
 import it.unibs.pajc.game.model.Move;
 import it.unibs.pajc.game.model.enums.PieceColor;
@@ -22,6 +22,8 @@ import static it.unibs.pajc.client.utils.Constants.*;
  * ChessBoard VIEW
  */
 public class ChessBoardView extends JPanel implements MouseMotionListener, MouseListener {
+    private final BoardController controller;
+
     //current active player color
     private PieceColor turnColor;
     //flag for inverted board
@@ -35,19 +37,20 @@ public class ChessBoardView extends JPanel implements MouseMotionListener, Mouse
     //list of piece views
     private final List<PieceView> pieces;
 
+    //ERRORE -> VA CHIESTO AL CONTROLLER
     private PieceView selectedPiece = null;
     //map of legal moves to be made
-    private Map<Location, Set<Move>> legalMoves;
+
     //move semaphore to handle locking
     private final Semaphore moveSemaphore = new Semaphore(0);
 
     /**
      * ChessBoardView default constructor
      */
-    public ChessBoardView() {
-        this.setPreferredSize(new Dimension(CHESSBOARD_SIZE, CHESSBOARD_SIZE));
+    public ChessBoardView(BoardController boardController) {
+        this.controller = boardController;
+        this.setPreferredSize(new Dimension(getTileSize() * 8, getTileSize() * 8));
         this.pieces = new ArrayList<>();
-        this.legalMoves = new HashMap<>();
         this.addMouseListener(this);
         this.addMouseMotionListener(this);
     }
@@ -84,7 +87,7 @@ public class ChessBoardView extends JPanel implements MouseMotionListener, Mouse
                 }
                 else {
                     PieceType type = PieceType.getPieceType(String.valueOf(c));
-                    PieceView pieceView = new PieceView(type, new Location(row, col), invertBoard);
+                    PieceView pieceView = new PieceView(type, new Location(row, col), getTileSize(), invertBoard);
                     synchronized (pieces) {
                         pieces.add(pieceView);
                     }
@@ -93,14 +96,6 @@ public class ChessBoardView extends JPanel implements MouseMotionListener, Mouse
             }
         }
         repaint();
-    }
-
-    /**
-     * set current board legal moves
-     * @param legalMoves legal moves map
-     */
-    public void setLegalMoves(Map<Location, Set<Move>> legalMoves) {
-        this.legalMoves = new HashMap<>(legalMoves);
     }
 
     /**
@@ -134,25 +129,25 @@ public class ChessBoardView extends JPanel implements MouseMotionListener, Mouse
             return;
         }
         Location absoluteLocation = invertBoard ? this.selectedLocation.invert() : this.selectedLocation;
-        if (absoluteLocation == null || legalMoves.get(absoluteLocation) == null) {
+        if (absoluteLocation == null || controller.getLegalMoves().get(absoluteLocation) == null) {
             return;
         }
-        Set<Move> moves = legalMoves.get(absoluteLocation);
+        Set<Move> moves = controller.getLegalMoves().get(absoluteLocation);
         for (Move move : moves) {
             Location targetLocation = move.getNewLocation().invert(invertBoard);
 
             int circleSize;
             if (move.isCapture()) {
                 g2d.setColor(Color.RED);
-                circleSize = Constants.CAPTURE_TILE;
+                circleSize = (int) (getTileSize() * 0.1);
             }
             else {
                 g2d.setColor(Color.GRAY.brighter());
-                circleSize = Constants.MOVE_TILE;
+                circleSize = (int) (getTileSize() * 0.3);
             }
             int r = targetLocation.getRow();
             int c = targetLocation.getCol();
-            g2d.fillOval(c * TILE_SIZE + circleSize, r * TILE_SIZE + circleSize, TILE_SIZE - 2 * circleSize, TILE_SIZE - 2 * circleSize);
+            g2d.fillOval(c * getTileSize() + circleSize, r * getTileSize() + circleSize, getTileSize() - 2 * circleSize, getTileSize() - 2 * circleSize);
         }
     }
 
@@ -176,7 +171,7 @@ public class ChessBoardView extends JPanel implements MouseMotionListener, Mouse
         for (int r = 0; r < ROWS; r++) {
             for (int c = 0; c < COLS; c++) {
                 g2d.setColor((r+c) % 2 == 0 ? LIGHT_TILE : DARK_TILE);
-                g2d.fillRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                g2d.fillRect(c * getTileSize(), r * getTileSize(), getTileSize(), getTileSize());
             }
         }
     }
@@ -188,11 +183,11 @@ public class ChessBoardView extends JPanel implements MouseMotionListener, Mouse
     private void drawPieces(Graphics2D g2s) {
         synchronized (pieces) {
             for (PieceView piece : pieces) {
-                piece.paint(g2s);
+                piece.paint(g2s, getTileSize());
             }
         }
         if (selectedPiece != null) {
-            selectedPiece.paint(g2s);
+            selectedPiece.paint(g2s, getTileSize());
         }
     }
 
@@ -207,7 +202,7 @@ public class ChessBoardView extends JPanel implements MouseMotionListener, Mouse
         int r = location.getRow();
         int c = location.getCol();
         g2d.setColor((r+c) % 2 == 0 ? DARK_FOCUSED_TILE : LIGHT_FOCUSED_TILE);
-        g2d.fillRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+        g2d.fillRect(c * getTileSize(), r * getTileSize(), getTileSize(), getTileSize());
     }
     /**
      * draws a tile with focus
@@ -237,9 +232,11 @@ public class ChessBoardView extends JPanel implements MouseMotionListener, Mouse
         try {
             moveSemaphore.acquire();
             this.turnColor = null;
+            //TODO CHECK IF NECESSARY
+            /*
             if (lastMove != null) {
                 this.legalMoves.clear();
-            }
+            }*/
             return lastMove;
         } catch (InterruptedException e) {
             moveSemaphore.release();
@@ -258,6 +255,17 @@ public class ChessBoardView extends JPanel implements MouseMotionListener, Mouse
         }
     }
 
+    private int getTileSize() {
+        if (getParent() != null) {
+            Dimension parentDimension = getSize();
+            int boardSize = Math.min(parentDimension.width, parentDimension.height);
+            return boardSize / 8;
+        }
+        else {
+            return TILE_SIZE;
+        }
+    }
+
 
     @Override
     public void mouseClicked(MouseEvent e) {
@@ -270,8 +278,8 @@ public class ChessBoardView extends JPanel implements MouseMotionListener, Mouse
      */
     @Override
     public void mousePressed(MouseEvent e) {
-        Location currentLocation = PieceView.pointerToLocation(e, invertBoard);
-        selectedLocation = PieceView.pointerToLocation(e);
+        Location currentLocation = PieceView.pointerToLocation(e, getTileSize(), invertBoard);
+        selectedLocation = PieceView.pointerToLocation(e, getTileSize());
         pieces.stream().filter(p -> p.getLocation().equals(currentLocation)).findFirst().ifPresent(currentPiece -> this.selectedPiece = currentPiece);
 
         repaint();
@@ -284,7 +292,7 @@ public class ChessBoardView extends JPanel implements MouseMotionListener, Mouse
      */
     @Override
     public void mouseReleased(MouseEvent e) {
-        Location currentLocation = PieceView.pointerToLocation(e, invertBoard);
+        Location currentLocation = PieceView.pointerToLocation(e, getTileSize(), invertBoard);
         selectedLocation = null;
         if (currentLocation != null && selectedPiece != null) {
 
@@ -292,10 +300,10 @@ public class ChessBoardView extends JPanel implements MouseMotionListener, Mouse
             Move move = new Move(lastLocation, currentLocation);
             // selected my pieces and valid position
             //add legalMoves.get(lastLocation).contains(currentLocation)
-            if (selectedPiece.sameColor(turnColor) && legalMoves.get(lastLocation).contains(move)) {
+            if (selectedPiece.sameColor(turnColor) && controller.getLegalMoves().get(lastLocation).contains(move)) {
                 //removePieceAt(currentLocation);
                 //selectedPiece.setLocation(currentLocation);
-                for (Move tempMove : legalMoves.get(lastLocation)) {
+                for (Move tempMove : controller.getLegalMoves().get(lastLocation)) {
                     if (tempMove.equals(move)) {
                         move = tempMove;
                         break;
@@ -322,11 +330,11 @@ public class ChessBoardView extends JPanel implements MouseMotionListener, Mouse
                 }
             }
 
-            selectedPiece.resetScreenLocation();
+            selectedPiece.resetScreenLocation(getTileSize());
             selectedPiece = null;
         }
         else if (currentLocation == null && selectedPiece != null) {
-            selectedPiece.resetScreenLocation();
+            selectedPiece.resetScreenLocation(getTileSize());
             selectedPiece = null;
         }
         repaint();
@@ -338,7 +346,7 @@ public class ChessBoardView extends JPanel implements MouseMotionListener, Mouse
      */
     @Override
     public void mouseEntered(MouseEvent e) {
-        focusedLocation = PieceView.pointerToLocation(e);
+        focusedLocation = PieceView.pointerToLocation(e, getTileSize());
         repaint();
     }
 
@@ -350,7 +358,7 @@ public class ChessBoardView extends JPanel implements MouseMotionListener, Mouse
     public void mouseExited(MouseEvent e) {
         focusedLocation = null;
         if (selectedPiece != null) {
-            selectedPiece.resetScreenLocation();
+            selectedPiece.resetScreenLocation(getTileSize());
         }
         repaint();
     }
@@ -361,9 +369,9 @@ public class ChessBoardView extends JPanel implements MouseMotionListener, Mouse
      */
     @Override
     public void mouseDragged(MouseEvent e) {
-        focusedLocation = PieceView.pointerToLocation(e);
+        focusedLocation = PieceView.pointerToLocation(e, getTileSize());
         if (selectedPiece == null) return;
-        selectedPiece.setScreenLocation(e);
+        selectedPiece.setScreenLocation(e, getTileSize());
         repaint();
     }
 
@@ -374,7 +382,7 @@ public class ChessBoardView extends JPanel implements MouseMotionListener, Mouse
     @Override
     public void mouseMoved(MouseEvent e) {
         if (selectedPiece != null) return;
-        focusedLocation = PieceView.pointerToLocation(e);
+        focusedLocation = PieceView.pointerToLocation(e, getTileSize());
         repaint();
     }
 }

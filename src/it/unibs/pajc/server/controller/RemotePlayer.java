@@ -49,7 +49,14 @@ public class RemotePlayer extends Player {
     }
 
     @Override
-    public void setLastMove(Move move) {
+    public void setLastMove(Move move) throws IOException {
+        try {
+            log("setLegalMoves");
+            NetPacket packet = new NetPacket(NetPacket.SET_LAST_MOVE, move);
+            output.writeObject(packet);
+        } catch (IOException e) {
+            throw new IOException(e);
+        }
     }
 
     /**
@@ -151,6 +158,11 @@ public class RemotePlayer extends Player {
     @Override
     public void setColor(PieceColor color) {
         super.setColor(color);
+    }
+
+    @Override
+    public boolean isAlive() {
+        return socket.isConnected() && !socket.isClosed();
     }
 
     /**

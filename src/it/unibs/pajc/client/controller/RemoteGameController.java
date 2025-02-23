@@ -109,6 +109,11 @@ public class RemoteGameController implements Runnable {
                 MoveMap moveMap = (MoveMap) packet.data;
                 player.setLegalMoves(moveMap);
             }
+            case NetPacket.SET_LAST_MOVE -> {
+                gameLog("Set last move");
+                Move move = (Move) packet.data;
+                player.setLastMove(move);
+            }
             case NetPacket.REQUEST_MOVE -> {
                 gameLog("request move");
                 Move move = null;

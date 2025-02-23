@@ -12,7 +12,7 @@ import java.util.List;
 
 public class Pawn extends Piece{
     public static final int[][] PAWN_TABLE = {
-            { 0,  0,  0,  0,  0,  0,  0,  0 },
+            { 500, 500,  500,  500,  500,  500,  500,  500},
             {50, 50, 50, 50, 50, 50, 50, 50 },
             {10, 10, 20, 30, 30, 20, 10, 10 },
             { 5,  5, 10, 25, 25, 10,  5,  5 },

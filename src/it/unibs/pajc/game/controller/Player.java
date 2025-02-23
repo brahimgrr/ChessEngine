@@ -41,7 +41,7 @@ public abstract class Player {
      *
      * @param move the last move made in the game.
      */
-    public abstract void setLastMove(Move move);
+    public abstract void setLastMove(Move move) throws IOException;
 
     /**
      * Sets the legal moves available to the player.
@@ -87,4 +87,6 @@ public abstract class Player {
     public PieceColor getColor() {
         return color;
     }
+
+    public abstract boolean isAlive();
 }

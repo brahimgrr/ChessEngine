@@ -115,6 +115,11 @@ public class GuiPlayer extends Player {
         controller.setPlayerColor(getColor());
     }
 
+    @Override
+    public boolean isAlive() {
+        return true;
+    }
+
     /**
      * closes the player view
      */

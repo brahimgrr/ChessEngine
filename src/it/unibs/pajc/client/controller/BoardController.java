@@ -5,9 +5,10 @@ import it.unibs.pajc.game.model.Location;
 import it.unibs.pajc.game.model.Move;
 import it.unibs.pajc.game.model.enums.PieceColor;
 import it.unibs.pajc.client.view.ChessBoardView;
-import it.unibs.pajc.client.utils.Constants;
 
+import javax.swing.*;
 import java.awt.event.WindowAdapter;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
@@ -16,11 +17,18 @@ import java.util.Set;
  */
 public class BoardController {
     private final ChessBoardView view;
+    private final JPanel statusPanel;
     private final MainFrame frame;
 
+    private final Map<Location, Set<Move>> legalMoves;
+    private String fenPosition;
+
     public BoardController() {
-        this.frame = new MainFrame();
+        this.legalMoves = new HashMap<>();
+
+        this.frame = new MainFrame(this);
         this.view = frame.getChessBoardView();
+        this.statusPanel = frame.getStatusPanel();
         this.frame.setVisible(true);
     }
 
@@ -37,7 +45,12 @@ public class BoardController {
     }
 
     public void setLegalMoves(Map<Location, Set<Move>> legalMoves) {
-        view.setLegalMoves(legalMoves);
+        this.legalMoves.clear();
+        this.legalMoves.putAll(legalMoves);
+    }
+
+    public Map<Location, Set<Move>> getLegalMoves() {
+        return legalMoves;
     }
 
     public void setLastMove(Move move) {

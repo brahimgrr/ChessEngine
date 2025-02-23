@@ -236,9 +236,9 @@ public class ChessAI implements Callable<Move> {
     private int evaluateBoard(ChessBoard board) {
         GameState gameState = board.getGameState();
         if (gameState == GameState.WIN_WHITE) {
-            return board.getTurn() == PieceColor.WHITE ? Integer.MAX_VALUE : Integer.MIN_VALUE;
+            return Integer.MAX_VALUE;
         } else if (gameState == GameState.WIN_BLACK) {
-            return board.getTurn() == PieceColor.WHITE ? Integer.MIN_VALUE : Integer.MAX_VALUE;
+            return Integer.MIN_VALUE;
         } else if (gameState == GameState.DRAW) {
             return 0; // Stalemate is a draw
         }
@@ -265,7 +265,8 @@ public class ChessAI implements Callable<Move> {
      */
     public List<Move> getSortedMoves(ChessBoard board, MoveMap moveMap) {
         List<Move> moves = new ArrayList<>(moveMap.getAllMoves());
-        moves.sort(Comparator.comparingInt(value -> -evaluateMove(board, value) ));
+        moves.sort(Comparator.comparingInt(value -> -evaluateMove(board, value)));
+
         return moves;
     }
 
@@ -273,7 +274,7 @@ public class ChessAI implements Callable<Move> {
      * calculates the move values based on the capture outcome
      * @param board current board
      * @param move move to be evaluated
-     * @return
+     * @return move value
      */
     private int evaluateMove(ChessBoard board, Move move) {
         Piece targetPiece = board.getTiles()[move.getCaptureLocation().getRow()][move.getCaptureLocation().getCol()];

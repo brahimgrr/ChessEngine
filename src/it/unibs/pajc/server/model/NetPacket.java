@@ -14,6 +14,7 @@ public class NetPacket implements Serializable {
 
     public static final String SET_LEGAL_MOVES = "SET_LEGAL_MOVES";
     public static final String SET_PLAYER_COLOR = "SET_PLAYER_COLOR";
+    public static final String SET_LAST_MOVE = "SET_LAST_MOVE";
 
     public static final String REQUIRE_COLOR = "REQUIRE_PLAYER_COLOR";
     public static final String RESPONSE_COLOR = "RESPONSE_PLAYER_COLOR";

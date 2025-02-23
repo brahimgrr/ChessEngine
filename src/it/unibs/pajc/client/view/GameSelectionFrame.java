@@ -35,6 +35,7 @@ public class GameSelectionFrame extends JFrame {
         setSize(400, 400 );
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new GridLayout(3, 1));
+        setResizable(false);
         setLocation(100,100);
 
         // Local Game Button

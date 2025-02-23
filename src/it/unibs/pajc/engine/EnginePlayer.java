@@ -42,6 +42,11 @@ public class EnginePlayer extends Player {
     public void setGameState(GameState gameState) {
     }
 
+    @Override
+    public boolean isAlive() {
+        return true;
+    }
+
     /**
      * calculates and returns the best calculated move
      * on the referenced board

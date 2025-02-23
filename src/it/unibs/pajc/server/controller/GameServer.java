@@ -1,5 +1,7 @@
 package it.unibs.pajc.server.controller;
 
+import it.unibs.pajc.client.controller.BoardController;
+import it.unibs.pajc.client.controller.GuiPlayer;
 import it.unibs.pajc.engine.EnginePlayer;
 import it.unibs.pajc.game.controller.GameController;
 import it.unibs.pajc.game.controller.Player;
@@ -49,6 +51,7 @@ public class GameServer {
             while (true) {
                 System.out.println("Waiting for clients...");
                 Socket playerSocket = serverSocket.accept();
+                playerSocket.setKeepAlive(true);
                 System.out.println("Player connected: " + playerSocket.getInetAddress());
 
                 executor.execute(() -> handlePlayerConnection(playerSocket));
