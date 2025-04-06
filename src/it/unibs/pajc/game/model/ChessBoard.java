@@ -82,7 +82,7 @@ public class ChessBoard {
     /**
      * getter for a piece a current location in the piece matrix
      * @param location piece location
-     * @return piece retried, null if no piece is present
+     * @return piece retrieved, null if no piece is present
      */
     public Piece getPiece(Location location) {
         return tiles[location.getRow()][location.getCol()];
@@ -106,11 +106,14 @@ public class ChessBoard {
     }
 
     /**
-     * makes a move on the board, withoud checking the validity of the move
+     * makes a move on the board, without checking the validity of the move
      * @param move move to be made
      */
     public void _movePiece(Move move) {
         Piece selectedPiece = getPiece(move.getOldLocation());
+        if (selectedPiece == null) {
+            System.out.println("NULL MOVE");
+        }
         moveStack.push(move);
         //remove piece from old location
         removePiece(move.getOldLocation());
@@ -119,6 +122,7 @@ public class ChessBoard {
         capturedPieceStack.push(capture);
         removePiece(move.getCaptureLocation());
 
+        //TODO ENGINE QUERY MOVES THAT RESULT IN NULL SELECTEDPIECE
         selectedPiece.setLocation(move.getNewLocation());
         selectedPiece.pieceMoved();
         //
@@ -241,7 +245,13 @@ public class ChessBoard {
 
         //player has no available moves, CHECKMATE
         if (!playerMap.movesAvailable()) {
-            return turn == PieceColor.WHITE ? GameState.WIN_BLACK : GameState.WIN_WHITE;
+            if (getKing(turn).underCheck(this))
+            {
+                return turn == PieceColor.WHITE ? GameState.WIN_BLACK : GameState.WIN_WHITE;
+            }
+            else {
+                return GameState.DRAW;
+            }
         }
         MoveMap opponentMap = legalMoves.get(turn.getOpposite());
 

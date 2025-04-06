@@ -13,6 +13,9 @@ import java.io.InterruptedIOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Consumer;
 
 /**
  * Controller to handle a game with a remote opponent
@@ -38,6 +41,20 @@ public class RemoteGameController implements Runnable {
     private ObjectInputStream inStream;
     private ObjectOutputStream outStream;
 
+    private final Map<Integer, Consumer<NetPacket>> packetHandlers;
+
+    private Map<Integer, Consumer<NetPacket>> generatePacketHandlers(Player player) {
+        return Map.of(/*
+                NetPacket.SET_POSITION_FEN, packet -> player.setPosition((String) packet.data),
+                NetPacket.SET_LEGAL_MOVES, packet -> player.setLegalMoves((MoveMap) packet.data),
+                NetPacket.SET_LAST_MOVE, packet -> player.setLastMove((Move) packet.data),
+                NetPacket.REQUEST_MOVE, packet -> handleMoveRequest(),
+                NetPacket.SET_PLAYER_COLOR, packet -> player.setColor((PieceColor) packet.data),
+                NetPacket.REQUIRE_COLOR, packet -> sendColorResponse(),
+                NetPacket.SET_GAME_STATE, packet -> handleGameState((GameState) packet.data)*/
+        );
+    }
+
     /**
      * RemoteGameController constructor
      * @param gameId game identifier
@@ -53,6 +70,7 @@ public class RemoteGameController implements Runnable {
         this.port = port;
         this.requireBot = requireBot;
         this.isPlaying = true;
+        this.packetHandlers = generatePacketHandlers(player);
     }
 
     @Override
@@ -62,112 +80,72 @@ public class RemoteGameController implements Runnable {
             log("Launched!");
             socket = new Socket(ip, port);
             outStream = new ObjectOutputStream(socket.getOutputStream());
-            outStream.flush();  // Ensure stream header is written
+            outStream.flush();
             inStream = new ObjectInputStream(socket.getInputStream());
 
             while (isPlaying) {
-                gameLoop();
+                processPacket();
             }
-        } catch (IOException | InterruptedException e) {
+        } catch (IOException | ClassNotFoundException e) {
             log("Game interrupted!");
             player.setGameState(GameState.CONNECTION_LOST);
             player.terminate();
-            Thread.currentThread().interrupt(); // Preserve the interrupt flag
-        } catch (ClassNotFoundException e) {
-            throw new RuntimeException(e);
+            Thread.currentThread().interrupt();
         } finally {
-            if (socket != null && !socket.isClosed()) {
-                try {
-                    socket.close();
-                } catch (IOException e) {
-                }
-            }
+            closeSocket();
         }
         log("Game loop terminated!");
     }
 
-    /**
-     * Main game loop
-     * @throws IOException
-     * @throws ClassNotFoundException
-     * @throws InterruptedException
-     */
-    private void gameLoop() throws IOException, ClassNotFoundException, InterruptedException {
-        Object obj = this.inStream.readObject();
-        gameLog(player.getColor() + " " + "PACKET RECEIVED");
-        if (! (obj instanceof NetPacket packet)) {
-            return;
-        }
-        switch (packet.type) {
-            case NetPacket.SET_POSITION_FEN -> {
-                gameLog("Set position fen");
-                String fen = (String) packet.data;
-                player.setPosition(fen);
-            }
-            case NetPacket.SET_LEGAL_MOVES -> {
-                gameLog("Set legal moves");
-                MoveMap moveMap = (MoveMap) packet.data;
-                player.setLegalMoves(moveMap);
-            }
-            case NetPacket.SET_LAST_MOVE -> {
-                gameLog("Set last move");
-                Move move = (Move) packet.data;
-                player.setLastMove(move);
-            }
-            case NetPacket.REQUEST_MOVE -> {
-                gameLog("request move");
-                Move move = null;
-                try {
-                    move = player.requireMove();
-                } catch (Exception e) {
-                    throw new InterruptedException(e.getMessage());
-                }
-
-                if (move == null) {
-                    log("No valid move received!");
-                    isPlaying = false;
-                    return; // Prevent an invalid move from breaking the game loop
-                }
-                gameLog("move made");
-                NetPacket responsePacket = new NetPacket(NetPacket.RESPONSE_MOVE, move);
-                outStream.writeObject(responsePacket);
-                gameLog("MOVE SENT");
-            }
-            case NetPacket.SET_PLAYER_COLOR -> {
-                gameLog("Set player color");
-                PieceColor color = (PieceColor) packet.data;
-                player.setColor(color);
-            }
-            case NetPacket.REQUIRE_COLOR -> {
-                gameLog("require color");
-                NetPacket responsePacket;
-                if (requireBot) {
-                    responsePacket = new NetPacket(NetPacket.RESPONSE_COLOR, player.getColor(), true);
-                }
-                else {
-                    responsePacket = new NetPacket(NetPacket.RESPONSE_COLOR, player.getColor());
-                }
-                outStream.writeObject(responsePacket);
-            }
-            case NetPacket.SET_GAME_STATE -> {
-                gameLog("Set game state");
-                GameState state = (GameState) packet.data;
-                player.setGameState(state);
-                if (state != GameState.PLAYING) {
-                    player.terminate();
-                }
-            }
-            default -> {
-                gameLog("INVALID PACKET");
-            }
+    private void processPacket() throws IOException, ClassNotFoundException {
+        Object obj = inStream.readObject();
+        if (obj instanceof NetPacket packet) {
+            packetHandlers
+                    .getOrDefault(packet.type, p -> log("INVALID PACKET"))
+                    .accept(packet);
         }
     }
 
-    /**
-     * method used to stop the current game
-     */
+    private void handleMoveRequest() {
+        try {
+            Move move = player.requireMove();
+            if (move == null) {
+                log("No valid move received!");
+                isPlaying = false;
+                return;
+            }
+            outStream.writeObject(new NetPacket(NetPacket.RESPONSE_MOVE, move));
+        } catch (Exception e) {
+            isPlaying = false;
+            log("Error in move request: " + e.getMessage());
+        }
+    }
+
+    private void sendColorResponse() {
+        try {
+            NetPacket responsePacket = new NetPacket(NetPacket.RESPONSE_COLOR, player.getColor(), requireBot);
+            outStream.writeObject(responsePacket);
+        } catch (IOException e) {
+            log("Failed to send color response: " + e.getMessage());
+        }
+    }
+
+    private void handleGameState(GameState state) {
+        player.setGameState(state);
+        if (state != GameState.PLAYING) {
+            player.terminate();
+        }
+    }
+
     public void stopGame() {
-        // Close the socket to break the blocking readObject call
+        closeSocket();
+        if (gameThread != null && gameThread != Thread.currentThread()) {
+            gameThread.interrupt();
+            log("Game thread interrupted: " + gameId);
+        }
+    }
+
+    private void closeSocket() {
         try {
             if (socket != null && !socket.isClosed()) {
                 socket.close();
@@ -176,27 +154,17 @@ public class RemoteGameController implements Runnable {
         } catch (IOException e) {
             log("Error closing socket: " + e.getMessage());
         }
+    }
 
-        // Interrupt the thread if it's still running
-        if (gameThread != null && gameThread != Thread.currentThread()) {
-            gameThread.interrupt();
-            log("Game thread interrupted: " + gameId);
+    private static void safeExecute(Runnable action) {
+        try {
+            action.run();
+        } catch (Exception e) {
+            System.err.println("Error executing packet handler: " + e.getMessage());
         }
     }
 
-    /**
-     * prints a message indicating the current game
-     * @param msg message to be visualized
-     */
     private void log(String msg) {
         System.out.println("Game " + gameId + " - " + msg);
-    }
-
-    /**
-     * prints a message indicating the current game state
-     * @param msg message to be visualized
-     */
-    private void gameLog(String msg) {
-        //gameLog("Game " + gameId + " - " + msg);
     }
 }
