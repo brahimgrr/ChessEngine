@@ -12,56 +12,33 @@ import java.util.LinkedList;
  */
 public class MainFrame extends JFrame {
     private final ChessBoardView chessBoardView;
-    private final JPanel statusPanel;
-    private final JLabel currentTurnLabel;
-    private final JTextArea movesHistoryArea;
-    private final JPanel capturedPiecesPanel;
-    private final LinkedList<String> movesHistory;
+    private final StatusView statusPanel;
 
     public MainFrame(BoardController boardController) {
         this.chessBoardView = new ChessBoardView(boardController);
-        this.statusPanel = new JPanel(new BorderLayout());
-        this.currentTurnLabel = new JLabel("Current Turn: White", SwingConstants.CENTER);
-        this.movesHistoryArea = new JTextArea(10, 15);
-        this.capturedPiecesPanel = new JPanel();
-        this.movesHistory = new LinkedList<>();
+        this.statusPanel = new StatusView(boardController);
+
         initialize();
     }
 
     private void initialize() {
-        this.setMinimumSize(new Dimension(800, 600));
+        //this.setMinimumSize(new Dimension(800, 600));
+        this.setMinimumSize(new Dimension(600, 450));
         this.getContentPane().setLayout(new BorderLayout());
-        this.getContentPane().setBackground(Color.BLACK);
+        //this.getContentPane().setBackground(Color.gray);
         this.setTitle("Chess");
         this.setResizable(true);
         this.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         this.setLocationRelativeTo(null);
-        this.setSize(800, 600);
+        //this.setSize(800, 600);
+        this.setSize(600, 450);
+
+        ImageIcon icon = new ImageIcon("res/icon.png"); // Replace with your icon path
+        setIconImage(icon.getImage());
 
         // Main container
         JPanel container = new JPanel(new BorderLayout());
-        container.setBackground(Color.BLACK);
-
-        // Game status panel (Right)
-        statusPanel.setPreferredSize(new Dimension(200, 600));
-        statusPanel.setBackground(Color.GRAY);
-
-        // Current Turn Indicator
-        currentTurnLabel.setOpaque(true);
-        currentTurnLabel.setBackground(Color.WHITE);
-        currentTurnLabel.setForeground(Color.BLACK);
-        statusPanel.add(currentTurnLabel, BorderLayout.NORTH);
-
-        // Move History
-        movesHistoryArea.setEditable(false);
-        JScrollPane movesScrollPane = new JScrollPane(movesHistoryArea);
-        movesScrollPane.setBorder(BorderFactory.createTitledBorder("Moves History"));
-        statusPanel.add(movesScrollPane, BorderLayout.CENTER);
-
-        // Captured Pieces Panel
-        capturedPiecesPanel.setLayout(new FlowLayout());
-        capturedPiecesPanel.setBorder(BorderFactory.createTitledBorder("Captured Pieces"));
-        statusPanel.add(capturedPiecesPanel, BorderLayout.SOUTH);
+        //container.setBackground(Color.gray);
 
         // Chessboard Wrapper
         JPanel chessBoardWrapper = new JPanel(new GridBagLayout()) {
@@ -73,7 +50,7 @@ public class MainFrame extends JFrame {
                 return new Dimension(size, size);
             }
         };
-        chessBoardWrapper.setBackground(Color.BLACK);
+        //chessBoardWrapper.setBackground(Color.gray);
         chessBoardWrapper.add(chessBoardView);
 
         // Resizing logic
@@ -92,7 +69,7 @@ public class MainFrame extends JFrame {
     }
 
     private void resizeFrame(JPanel chessBoardWrapper, JPanel statusPanel) {
-        int availableWidth = (int) (getContentPane().getWidth() * 0.80);
+        int availableWidth = (int) (getContentPane().getWidth() * 0.70);
         int complementWidth = getContentPane().getWidth() - availableWidth;
         int availableHeight = getContentPane().getHeight();
         int size = Math.min(availableWidth, availableHeight);
@@ -107,30 +84,11 @@ public class MainFrame extends JFrame {
         chessBoardWrapper.repaint();
     }
 
-    public void updateTurn(boolean isWhiteTurn) {
-        currentTurnLabel.setText("Current Turn: " + (isWhiteTurn ? "White" : "Black"));
-        currentTurnLabel.setBackground(isWhiteTurn ? Color.WHITE : Color.BLACK);
-        currentTurnLabel.setForeground(isWhiteTurn ? Color.BLACK : Color.WHITE);
-    }
-
-    public void addMove(String move) {
-        movesHistory.addFirst(move);
-        if (movesHistory.size() > 10) movesHistory.removeLast();
-        movesHistoryArea.setText(String.join("\n", movesHistory));
-    }
-
-    public void addCapturedPiece(ImageIcon piece) {
-        JLabel pieceLabel = new JLabel(piece);
-        capturedPiecesPanel.add(pieceLabel);
-        capturedPiecesPanel.revalidate();
-        capturedPiecesPanel.repaint();
-    }
-
     public ChessBoardView getChessBoardView() {
         return chessBoardView;
     }
 
-    public JPanel getStatusPanel() {
+    public StatusView getStatusPanel() {
         return statusPanel;
     }
 }

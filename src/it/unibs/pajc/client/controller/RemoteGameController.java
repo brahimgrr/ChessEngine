@@ -15,6 +15,9 @@ import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.SimpleTimeZone;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
 /**
@@ -24,7 +27,7 @@ public class RemoteGameController implements Runnable {
     //game unique identifier
     private final int gameId;
     //gui board player
-    private final GuiPlayer player;
+    private final Player player;
     //server ip
     private final String ip;
     //server port
@@ -41,17 +44,21 @@ public class RemoteGameController implements Runnable {
     private ObjectInputStream inStream;
     private ObjectOutputStream outStream;
 
-    private final Map<Integer, Consumer<NetPacket>> packetHandlers;
+    private final Map<String, Consumer<NetPacket>> packetHandlers;
 
-    private Map<Integer, Consumer<NetPacket>> generatePacketHandlers(Player player) {
-        return Map.of(/*
-                NetPacket.SET_POSITION_FEN, packet -> player.setPosition((String) packet.data),
-                NetPacket.SET_LEGAL_MOVES, packet -> player.setLegalMoves((MoveMap) packet.data),
-                NetPacket.SET_LAST_MOVE, packet -> player.setLastMove((Move) packet.data),
-                NetPacket.REQUEST_MOVE, packet -> handleMoveRequest(),
-                NetPacket.SET_PLAYER_COLOR, packet -> player.setColor((PieceColor) packet.data),
-                NetPacket.REQUIRE_COLOR, packet -> sendColorResponse(),
-                NetPacket.SET_GAME_STATE, packet -> handleGameState((GameState) packet.data)*/
+    private final ExecutorService moveExecutor = Executors.newSingleThreadExecutor();
+
+
+    private Map<String, Consumer<NetPacket>> generatePacketHandlers(Player player) {
+        return Map.of(
+                NetPacket.SET_POSITION_FEN, packet -> handlePosition(packet),
+                NetPacket.SET_LEGAL_MOVES, packet -> handleLegalMoves(packet),
+                NetPacket.SET_LAST_MOVE, packet -> handleLastMove(packet),
+                NetPacket.REQUEST_MOVE, packet -> handleMoveRequestAsync(),
+                NetPacket.SET_PLAYER_COLOR, packet -> handleColor(packet),
+                NetPacket.REQUIRE_COLOR, packet -> handleColorResponse(),
+                NetPacket.SET_GAME_STATE, packet -> handleGameState((GameState) packet.data),
+                NetPacket.PING, packet -> handlePing()
         );
     }
 
@@ -79,6 +86,7 @@ public class RemoteGameController implements Runnable {
         try {
             log("Launched!");
             socket = new Socket(ip, port);
+            socket.setKeepAlive(true);
             outStream = new ObjectOutputStream(socket.getOutputStream());
             outStream.flush();
             inStream = new ObjectInputStream(socket.getInputStream());
@@ -87,11 +95,11 @@ public class RemoteGameController implements Runnable {
                 processPacket();
             }
         } catch (IOException | ClassNotFoundException e) {
-            log("Game interrupted!");
-            player.setGameState(GameState.CONNECTION_LOST);
-            player.terminate();
+            log("Remote Game interrupted!");
+            handleGameState(GameState.CONNECTION_LOST);
             Thread.currentThread().interrupt();
         } finally {
+            moveExecutor.shutdownNow();
             closeSocket();
         }
         log("Game loop terminated!");
@@ -106,6 +114,9 @@ public class RemoteGameController implements Runnable {
         }
     }
 
+    private void handleMoveRequestAsync() {
+        moveExecutor.submit(() -> handleMoveRequest());
+    }
     private void handleMoveRequest() {
         try {
             Move move = player.requireMove();
@@ -116,12 +127,12 @@ public class RemoteGameController implements Runnable {
             }
             outStream.writeObject(new NetPacket(NetPacket.RESPONSE_MOVE, move));
         } catch (Exception e) {
-            isPlaying = false;
+            //isPlaying = false;
             log("Error in move request: " + e.getMessage());
         }
     }
 
-    private void sendColorResponse() {
+    private void handleColorResponse() {
         try {
             NetPacket responsePacket = new NetPacket(NetPacket.RESPONSE_COLOR, player.getColor(), requireBot);
             outStream.writeObject(responsePacket);
@@ -130,8 +141,49 @@ public class RemoteGameController implements Runnable {
         }
     }
 
+    private void handlePing() {
+        try {
+            NetPacket pong = new NetPacket(NetPacket.PONG, null);
+            outStream.writeObject(pong);
+        } catch (IOException e) {
+            log("Failed to pong request: " + e.getMessage());
+        }
+    }
+
+    private void handleColor(NetPacket packet) {
+        player.setColor((PieceColor) packet.data);
+    }
+
+    private void handleLastMove(NetPacket packet) {
+        try {
+            player.setLastMove((Move) packet.data);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void handleLegalMoves(NetPacket packet) {
+        try {
+            player.setLegalMoves((MoveMap) packet.data);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void handlePosition(NetPacket packet) {
+        try {
+            player.setPosition((String) packet.data);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     private void handleGameState(GameState state) {
-        player.setGameState(state);
+        try {
+            player.setGameState(state);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
         if (state != GameState.PLAYING) {
             player.terminate();
         }

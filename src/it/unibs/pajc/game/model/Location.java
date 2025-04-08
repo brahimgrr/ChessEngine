@@ -87,7 +87,8 @@ public class Location implements Serializable {
      */
     @Override
     public String toString() {
-        return "(" + row + "," + col + ")";
+        char colChar = (char) ('a' + col);
+        return "(" + Character.toString(colChar).toUpperCase() + (row+1) + ")";
     }
 
     /**

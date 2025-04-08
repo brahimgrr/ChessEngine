@@ -59,7 +59,7 @@ public class Pawn extends Piece{
         if (col < 7) {
             targetLocation = new Location(row + direction, col + 1);
             if (board.getPiece(targetLocation) != null && board.getPiece(targetLocation).getColor() != getColor()) {
-                move = new Move(getLocation(), targetLocation, true);
+                move = new Move(getLocation(), targetLocation, board.getPiece(targetLocation).type);
                 moves.add(move);
             }
             Location passantLocation = new Location(row , col + 1);
@@ -68,7 +68,7 @@ public class Pawn extends Piece{
         if (col > 0) {
             targetLocation = new Location(row + direction, col - 1);
             if (board.getPiece(targetLocation) != null && board.getPiece(targetLocation).getColor() != getColor()) {
-                move = new Move(getLocation(), targetLocation, true);
+                move = new Move(getLocation(), targetLocation, board.getPiece(targetLocation).type);
                 moves.add(move);
             }
             Location passantLocation = new Location(row , col - 1);
@@ -96,7 +96,7 @@ public class Pawn extends Piece{
                 board.getPiece(passantLocation).getColor() != getColor() &&
                 board.getPiece(passantLocation) instanceof Pawn &&
                 board.getPiece(passantLocation).getMoveCounter() == 1) {
-            move = new Move(getLocation(), targetLocation, passantLocation);
+            move = new Move(getLocation(), targetLocation, passantLocation, board.getPiece(passantLocation).type);
             moves.add(move);
         }
     }

@@ -111,16 +111,21 @@ public class GameServer {
      * with a BOT, assigning the correct color
      * @param player remote player
      */
-    private static void botGameMatch(RemotePlayer player) {
+    private static void botGameMatch(RemotePlayer player) throws IOException {
         Player whitePlayer;
         Player blackPlayer;
         //Game controller automatically assigns a BOT when a player is null
+        //Socket engineSocket = new Socket(NetworkConstants.SERVER_IP, NetworkConstants.ENGINE_PORT);
         if (player.getColor() == PieceColor.WHITE) {
             whitePlayer = player;
+
             blackPlayer = null;
+
+            //blackPlayer = new RemotePlayer(engineSocket);
         }
         else {
             whitePlayer = null;
+            //whitePlayer = new RemotePlayer(engineSocket);
             blackPlayer = player;
         }
         System.out.println("Starting BOT game " + gameCounter);

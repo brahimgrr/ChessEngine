@@ -10,6 +10,9 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 /**
  * Class representing a Chess game
@@ -137,6 +140,7 @@ public class GameController implements Runnable{
             Player currentPlayer = playerMap.get(turn);
 
             currentPlayer.setLegalMoves(board.getLegalMoves(turn));
+            /*
             try {
                 move = currentPlayer.requireMove();
             } catch (Exception e) {
@@ -146,7 +150,45 @@ public class GameController implements Runnable{
             if (move == null) {
                 log("No valid move received!");
                 return false; // Prevent an invalid move from breaking the game loop
+            }*/
+
+
+            ExecutorService executor = Executors.newSingleThreadExecutor();
+            Future<Boolean> moveFuture = executor.submit(() -> {
+                try {
+                    // Wait for the player's move
+                    move = currentPlayer.requireMove();
+                    return move != null;
+                } catch (Exception e) {
+                    log("Error receiving move: " + e.getMessage());
+                    return false;
+                }
+            });
+            while (true) {
+                if (!isOpponentConnected(currentPlayer)) {
+                    log("Opponent disconnected!");
+
+                    executor.shutdownNow(); // Stop waiting for the move
+
+                    throw new InterruptedException("Opponent disconnected");
+                }
+
+                if (moveFuture.isDone()) {
+                    if (!moveFuture.resultNow() || move == null) {
+                        log("No valid move received!");
+                        throw new InterruptedException("Player disconnected");
+                    }
+                    break;
+                }
+
+                try {
+                    Thread.sleep(1000); // Check every second (adjust as needed)
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return false;
+                }
             }
+
 
             board.movePiece(move, true);
             gameLog("MOVE " + turn.getName() + " : " + move);
@@ -168,6 +210,13 @@ public class GameController implements Runnable{
         return false;
     }
 
+    private boolean isOpponentConnected(Player currentPlayer) {
+        PieceColor opponentColor = currentPlayer.getColor().getOpposite();
+        Player opponent = playerMap.get(opponentColor);
+
+        // Check if the opponent's connection is active (this could be a socket check or a specific method)
+        return opponent.isAlive(); // Assuming you have an isConnected() method or similar
+    }
     /**
      * method used to stop the current game
      */

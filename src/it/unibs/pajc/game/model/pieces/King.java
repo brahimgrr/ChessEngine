@@ -1,9 +1,6 @@
 package it.unibs.pajc.game.model.pieces;
 
-import it.unibs.pajc.game.model.ChessBoard;
-import it.unibs.pajc.game.model.Location;
-import it.unibs.pajc.game.model.Move;
-import it.unibs.pajc.game.model.Piece;
+import it.unibs.pajc.game.model.*;
 import it.unibs.pajc.game.model.enums.PieceColor;
 import it.unibs.pajc.game.model.enums.PieceType;
 
@@ -33,7 +30,7 @@ public class King extends Piece{
      * @return a boolean representing if the current king is under check
      */
     public boolean underCheck(ChessBoard chessBoard) {
-        Map<Location, Set<Move>> opponentMoves = chessBoard.getLegalMoves(getColor().getOpposite());
+        Map<Location, Set<Move>> opponentMoves = MoveMap.getUnvalidatedMoveMap(chessBoard, getColor().getOpposite());
         for (Map.Entry<Location, Set<Move>> entry : opponentMoves.entrySet()) {
             Location opponentLocation = entry.getKey();
             Move checkMove = new Move(opponentLocation, getLocation());

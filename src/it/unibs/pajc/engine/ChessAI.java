@@ -36,6 +36,9 @@ public class ChessAI implements Callable<Move> {
         }
         System.out.println("No. evaluated moves: " + evaluatedCounter);
         evaluatedCounter = 0;
+        if (bestMove == null && !legalMoves.getAllMoves().isEmpty()) {
+            return legalMoves.getAllMoves().get(0);
+        }
         return bestMove;
     }
 

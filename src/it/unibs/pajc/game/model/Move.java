@@ -1,6 +1,7 @@
 package it.unibs.pajc.game.model;
 
 import it.unibs.pajc.game.model.enums.PieceColor;
+import it.unibs.pajc.game.model.enums.PieceType;
 import it.unibs.pajc.game.model.pieces.King;
 
 import java.io.Serializable;
@@ -17,6 +18,7 @@ public class Move implements Serializable {
     private final Location newLocation;
     private final Location captureLocation;
     private final boolean isCapture;
+    private final PieceType captureType;
     private final boolean isCheck;
 
     /**
@@ -29,6 +31,7 @@ public class Move implements Serializable {
         this.newLocation = newLocation;
         this.captureLocation = newLocation;
         this.isCapture = false;
+        this.captureType = null;
         this.isCheck = false;
     }
 
@@ -39,11 +42,12 @@ public class Move implements Serializable {
      * @param isCapture boolean describing if the move results in a capture
      * @param isCheck boolean describing if the move results in a check
      */
-    public Move(Location oldLocation, Location newLocation, boolean isCapture, boolean isCheck) {
+    public Move(Location oldLocation, Location newLocation, boolean isCapture, PieceType captureType, boolean isCheck) {
         this.oldLocation = oldLocation;
         this.newLocation = newLocation;
         this.captureLocation = newLocation;
         this.isCapture = isCapture;
+        this.captureType = captureType;
         this.isCheck = isCheck;
     }
 
@@ -53,11 +57,12 @@ public class Move implements Serializable {
      * @param newLocation new location
      * @param isCapture boolean describing if the move is a capture
      */
-    public Move(Location oldLocation, Location newLocation, boolean isCapture) {
+    public Move(Location oldLocation, Location newLocation, PieceType captureType) {
         this.oldLocation = oldLocation;
         this.newLocation = newLocation;
         this.captureLocation = newLocation;
-        this.isCapture = isCapture;
+        this.isCapture = true;
+        this.captureType = captureType;
         this.isCheck = false;
     }
 
@@ -68,11 +73,12 @@ public class Move implements Serializable {
      * @param newLocation new location
      * @param captureLocation capture location
      */
-    public Move(Location oldLocation, Location newLocation, Location captureLocation) {
+    public Move(Location oldLocation, Location newLocation, Location captureLocation, PieceType captureType) {
         this.oldLocation = oldLocation;
         this.newLocation = newLocation;
         this.captureLocation = captureLocation;
         this.isCapture = true;
+        this.captureType = captureType;
         this.isCheck = false;
     }
 
@@ -166,7 +172,7 @@ public class Move implements Serializable {
                 else if (target.getColor() != originPiece.getColor()) {
                     boolean check = (target instanceof King);
                     //TODO to check if move is check, calculate current move next iteration
-                    moves.add(new Move(originPiece.getLocation(), targetLocation, true, check));
+                    moves.add(new Move(originPiece.getLocation(), targetLocation, true, target.type, check));
                     //moves.add(new Move(originPiece.getLocation(), targetLocation, true));
                 }
             }
@@ -230,7 +236,7 @@ public class Move implements Serializable {
         else if (targetPiece.getColor() != currentColor) {
             boolean check = (targetPiece instanceof King);
             //TODO to check if move is check, calculate current move next iteration
-            Move move = new Move(currentLocation, targetLocation, true, check);
+            Move move = new Move(currentLocation, targetLocation, true, targetPiece.type, check);
             //Move move = new Move(currentLocation, targetLocation, true);
             moves.add(move);
             return true;
@@ -272,6 +278,11 @@ public class Move implements Serializable {
     public boolean isCapture() {
         return isCapture;
     }
+
+    public PieceType getCaptureType() {
+        return captureType;
+    }
+
     /**
      * check if a move results in a check
      * @return a boolean to describe if a move results in a check

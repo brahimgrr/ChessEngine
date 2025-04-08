@@ -31,85 +31,139 @@ public class GameSelectionFrame extends JFrame {
     private static final ExecutorService executor = Executors.newCachedThreadPool();
 
     public GameSelectionFrame() {
-        setTitle("Game Selection");
-        setSize(400, 400 );
+        setTitle("Chess");
+        setSize(420, 500);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setLayout(new GridLayout(3, 1));
         setResizable(false);
         setLocation(100,100);
 
-        // Local Game Button
-        JPanel localGamePanel = new JPanel();
-        localGamePanel.setLayout(new BoxLayout(localGamePanel, BoxLayout.Y_AXIS)); // Vertical layout
-        localGamePanel.setBorder(BorderFactory.createTitledBorder("Play Local Game")); // Add border
-        localGamePanel.setAlignmentX(Component.CENTER_ALIGNMENT); // Center alignment
+        ImageIcon icon = new ImageIcon("res/icon.png"); // Replace with your icon path
+        setIconImage(icon.getImage());
 
-        JButton localGameButton = new JButton("Play Local Game");
-        localGameButton.setAlignmentX(Component.CENTER_ALIGNMENT); // Align button to center
-        localGameButton.addActionListener(e -> startLocalGame());
+        try {
+            UIManager.setLookAndFeel("javax.swing.plaf.nimbus.NimbusLookAndFeel");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
-        JButton localBotGameButton = new JButton("Watch Local Bot Game");
-        localBotGameButton.setAlignmentX(Component.CENTER_ALIGNMENT); // Align button to center
-        localBotGameButton.addActionListener(e -> startLocalBotGame());
+        JPanel contentPane = new JPanel();
+        contentPane.setLayout(new BoxLayout(contentPane, BoxLayout.Y_AXIS));
+        contentPane.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
 
-        localGamePanel.add(Box.createVerticalStrut(5)); // Small gap at the top
-        localGamePanel.add(localGameButton);
-        localGamePanel.add(Box.createVerticalStrut(10)); // Space between buttons
-        localGamePanel.add(localBotGameButton);
-        localGamePanel.add(Box.createVerticalStrut(5)); // Small gap at the bottom
+        contentPane.add(createLocalGamePanel());
+        contentPane.add(Box.createVerticalStrut(15));
+        contentPane.add(createBotGamePanel());
+        contentPane.add(Box.createVerticalStrut(15));
+        contentPane.add(createOnlineGamePanel());
 
-        add(localGamePanel);
+        setContentPane(contentPane);
+    }
+
+    private JPanel createLocalGamePanel() {
+        JPanel panel = new JPanel();
+        panel.setBorder(BorderFactory.createTitledBorder("🎮 Play Local Game"));
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+
+        // Inner panel to center-align buttons
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.setLayout(new BoxLayout(buttonPanel, BoxLayout.Y_AXIS));
+        buttonPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        JButton playButton = new JButton("Play Local Game");
+        playButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        playButton.addActionListener(e -> startLocalGame());
+
+        JButton watchButton = new JButton("Watch Local Bot Game");
+        watchButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        watchButton.addActionListener(e -> startLocalBotGame());
+
+        buttonPanel.add(playButton);
+        buttonPanel.add(Box.createVerticalStrut(10));
+        buttonPanel.add(watchButton);
+
+        panel.add(Box.createVerticalGlue());
+        panel.add(buttonPanel);
+        panel.add(Box.createVerticalGlue());
+
+        return panel;
+    }
 
 
-        JPanel botGamePanel = new JPanel();
-        botGamePanel.setLayout(new BoxLayout(botGamePanel, BoxLayout.Y_AXIS)); // Vertical layout
-        botGamePanel.setBorder(BorderFactory.createTitledBorder("Play Against Bot"));
+    private JPanel createBotGamePanel() {
+        JPanel panel = new JPanel();
+        panel.setBorder(BorderFactory.createTitledBorder("🤖 Play Against Bot"));
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
 
         whiteBot = new JRadioButton("White", true);
         blackBot = new JRadioButton("Black");
-        ButtonGroup botGroup = new ButtonGroup();
-        botGroup.add(whiteBot);
-        botGroup.add(blackBot);
 
-        JButton botGameButton = new JButton("Start Bot Game");
-        botGameButton.setAlignmentX(Component.LEFT_ALIGNMENT); // Ensures button doesn't expand
-        botGameButton.addActionListener(e -> startOnlineGame(true));
-        botGamePanel.add(whiteBot);
-        botGamePanel.add(blackBot);
-        botGamePanel.add(Box.createVerticalStrut(10)); // Space between radio buttons and button
-        botGamePanel.add(botGameButton);
+        ButtonGroup group = new ButtonGroup();
+        group.add(whiteBot);
+        group.add(blackBot);
 
-        add(botGamePanel);
+        JPanel radioPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        radioPanel.add(whiteBot);
+        radioPanel.add(blackBot);
 
+        JButton startBotButton = new JButton("Start Bot Game");
+        startBotButton.addActionListener(e -> startOnlineGame(true));
 
-        //Online
-        JPanel onlineGamePanel = new JPanel();
-        onlineGamePanel.setBorder(BorderFactory.createTitledBorder("Play Online"));
-        onlineGamePanel.setLayout(new GridLayout(5, 2));
-        onlineGamePanel.add(new JLabel("Server IP:"));
-        serverIpField = new JTextField(NetworkConstants.SERVER_IP,10);
-        onlineGamePanel.add(serverIpField);
-        onlineGamePanel.add(new JLabel("Server Port:"));
-        serverPortField = new JTextField(String.valueOf(NetworkConstants.SERVER_PORT),5);
-        onlineGamePanel.add(serverPortField);
+        panel.add(radioPanel);
+        panel.add(Box.createVerticalStrut(10));
+        panel.add(startBotButton);
+
+        return panel;
+    }
+
+    private JPanel createOnlineGamePanel() {
+        JPanel panel = new JPanel();
+        panel.setBorder(BorderFactory.createTitledBorder("🌐 Play Online"));
+        panel.setLayout(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(4, 4, 4, 4);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+
+        serverIpField = new JTextField("localhost", 10);
+        serverPortField = new JTextField("12345", 5);
+
         whiteOnline = new JRadioButton("White", true);
         blackOnline = new JRadioButton("Black");
-        ButtonGroup onlineGroup = new ButtonGroup();
-        onlineGroup.add(whiteOnline);
-        onlineGroup.add(blackOnline);
-        onlineGamePanel.add(whiteOnline);
-        onlineGamePanel.add(blackOnline);
-        JButton onlineGameButton = new JButton("Start Online Game");
-        onlineGameButton.setAlignmentX(Component.CENTER_ALIGNMENT);
-        onlineGameButton.addActionListener(e -> startOnlineGame(false));
-        botGamePanel.add(Box.createVerticalStrut(10));
-        onlineGamePanel.add(onlineGameButton);
-        add(onlineGamePanel);
-        //add(onlineGameButton);
+
+        ButtonGroup colorGroup = new ButtonGroup();
+        colorGroup.add(whiteOnline);
+        colorGroup.add(blackOnline);
+
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        panel.add(new JLabel("Server IP:"), gbc);
+        gbc.gridx = 1;
+        panel.add(serverIpField, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        panel.add(new JLabel("Server Port:"), gbc);
+        gbc.gridx = 1;
+        panel.add(serverPortField, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy = 2;
+        panel.add(whiteOnline, gbc);
+        gbc.gridx = 1;
+        panel.add(blackOnline, gbc);
+
+        JButton startOnline = new JButton("Start Online Game");
+        startOnline.addActionListener(e -> startOnlineGame(false));
+
+        gbc.gridx = 0;
+        gbc.gridy = 3;
+        gbc.gridwidth = 2;
+        panel.add(startOnline, gbc);
+
+        return panel;
     }
 
     private void startLocalGame() {
-        JOptionPane.showMessageDialog(this, "Starting Local Game...");
+        //JOptionPane.showMessageDialog(this, "Starting Local Game...");
 
         BoardController boardController = new BoardController();
         GuiPlayer white = new GuiPlayer(PieceColor.WHITE, boardController);
@@ -140,7 +194,7 @@ public class GameSelectionFrame extends JFrame {
         else {
             color = whiteOnline.isSelected() ? "White" : "Black";
         }
-        JOptionPane.showMessageDialog(this, "Connecting to " + ip + ":" + port + " as " + color);
+        //JOptionPane.showMessageDialog(this, "Connecting to " + ip + ":" + port + " as " + color);
         PieceColor playerColor = color.equals("White") ? PieceColor.WHITE : PieceColor.BLACK;
 
         BoardController boardController = new BoardController();

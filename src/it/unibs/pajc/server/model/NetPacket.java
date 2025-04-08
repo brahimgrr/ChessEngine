@@ -24,6 +24,8 @@ public class NetPacket implements Serializable {
     public static final String SET_GAME_STATE = "SET_GAME_STATE";
 
     public static final String KEEP_ALIVE = "KEEP_ALIVE";
+    public static final String PING = "PING";
+    public static final String PONG = "PONG";
 
     //Packet type identification
     public final String type;

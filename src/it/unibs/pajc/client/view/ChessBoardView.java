@@ -48,6 +48,7 @@ public class ChessBoardView extends JPanel implements MouseMotionListener, Mouse
      * ChessBoardView default constructor
      */
     public ChessBoardView(BoardController boardController) {
+        this.setBackground(Color.GRAY);
         this.controller = boardController;
         this.setPreferredSize(new Dimension(getTileSize() * 8, getTileSize() * 8));
         this.pieces = new ArrayList<>();
@@ -72,7 +73,6 @@ public class ChessBoardView extends JPanel implements MouseMotionListener, Mouse
         synchronized (pieces) {
             pieces.clear();
         }
-        String[] rows = fenString.split("/");
         int row = 0;
         int col = 0;
         for (char c : fenString.toCharArray()) {
@@ -385,4 +385,5 @@ public class ChessBoardView extends JPanel implements MouseMotionListener, Mouse
         focusedLocation = PieceView.pointerToLocation(e, getTileSize());
         repaint();
     }
+
 }

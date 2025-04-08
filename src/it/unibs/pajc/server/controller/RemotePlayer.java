@@ -9,6 +9,9 @@ import it.unibs.pajc.server.model.NetPacket;
 
 import java.io.*;
 import java.net.Socket;
+import java.net.SocketException;
+import java.net.SocketTimeoutException;
+import java.util.Objects;
 
 /**
  * Implementation of Player class, representing a remote player
@@ -162,7 +165,43 @@ public class RemotePlayer extends Player {
 
     @Override
     public boolean isAlive() {
-        return socket.isConnected() && !socket.isClosed();
+        if (socket == null || socket.isClosed() || !socket.isConnected()) {
+            log(getColor() + ": Cannot check connection, socket state invalid.");
+            return false;
+        }
+
+        try {
+            // Temporarily set a read timeout for the PONG response
+            int originalSoTimeout = socket.getSoTimeout();
+            //socket.setSoTimeout(20_000); // e.g., 2000 ms
+
+            log(getColor() + ": Sending PING");
+
+            NetPacket request = new NetPacket(NetPacket.PING, null);
+            output.writeObject(request);
+            log("SENT PING");
+            Object response = input.readObject();
+            log("RECEIVE RESPONSE");
+            if (response instanceof NetPacket && Objects.equals(((NetPacket) response).type, NetPacket.PONG)) {
+                log(getColor() + ": Received PONG");
+                return  true;
+            }
+            else {
+                return false;
+            }
+        } catch (SocketTimeoutException e) {
+            // Timeout occurred - no PONG received in time
+            log(getColor() + ": PING timed out.");
+            return false;
+        } catch (IOException e) {
+            // Other network error during send/receive
+            log(getColor() + ": IOException during PING/PONG: " + e.getMessage());
+            return false;
+        } catch (Exception e) {
+            // Catch any other potential issues
+            log(getColor() + ": Unexpected error during PING/PONG: " + e.getMessage());
+            return false;
+        }
     }
 
     /**
