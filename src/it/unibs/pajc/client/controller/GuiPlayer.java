@@ -46,7 +46,7 @@ public class GuiPlayer extends Player {
      * @param gameState the current state of the game.
      */
     @Override
-    public void setGameState(GameState gameState) {
+    public void setGameState(GameState gameState) throws IllegalArgumentException {
         if (isSpectator) {
             return;
         }

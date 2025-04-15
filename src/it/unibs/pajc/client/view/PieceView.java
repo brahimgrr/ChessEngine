@@ -19,22 +19,19 @@ public class PieceView {
     private final Image pieceImage;
     private Location location;
     private Point screenLocation; //percentage value between 0 and 100
-    private final boolean inverted;
-
     /**
      * Piece constructor
      * @param type piece type
      * @param location piece location
      * @param inverted flag if board is inverted
      */
-    public PieceView(PieceType type, Location location, int tileSize, boolean inverted) {
+    public PieceView(PieceType type, Location location, boolean inverted) {
         //absolute location on board
         this.location = location;
-        this.inverted = inverted;
         this.pieceColor = type.color;
         this.pieceImage = ImageLoader.pieceImages.get(type);
         //location on screen
-        this.screenLocation = locationToPoint(location, tileSize, inverted);
+        this.screenLocation = locationToPoint(location, inverted);
     }
 
     /**
@@ -42,7 +39,7 @@ public class PieceView {
      * @param location location
      * @return screen location
      */
-    public static Point locationToPoint(Location location, int tileSize) {
+    public static Point locationToPoint(Location location) {
         int xPos = location.getCol() * 1000 / 8;
         int yPos = location.getRow() * 1000 / 8;
         return new Point(xPos, yPos);
@@ -54,12 +51,12 @@ public class PieceView {
      * @param inverted flag for inverted board
      * @return screen location
      */
-    public static Point locationToPoint(Location location, int tileSize, boolean inverted) {
+    public static Point locationToPoint(Location location, boolean inverted) {
         if (inverted) {
-            return locationToPoint(location.invert(), tileSize);
+            return locationToPoint(location.invert());
         }
         else {
-            return locationToPoint(location, tileSize);
+            return locationToPoint(location);
         }
     }
 
@@ -114,8 +111,8 @@ public class PieceView {
     /**
      * restore the piece location
      */
-    public void resetScreenLocation(int tileSize) {
-        this.screenLocation = locationToPoint(location, tileSize, inverted);
+    public void resetScreenLocation(boolean inverted) {
+        this.screenLocation = locationToPoint(location, inverted);
     }
 
     /**
@@ -143,6 +140,9 @@ public class PieceView {
         return this.pieceColor.equals(pieceColor);
     }
 
+    public Image getPieceImage() {
+        return pieceImage;
+    }
     /**
      * Paints the current piece
      * @param g2d graphics

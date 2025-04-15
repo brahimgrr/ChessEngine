@@ -132,6 +132,9 @@ public class ChessBoard {
         }
         else {
             addPiece(selectedPiece, move.getNewLocation());
+            if (move.isCastle()) {
+                _movePiece(move.getCastleMove());
+            }
         }
     }
 
@@ -170,6 +173,12 @@ public class ChessBoard {
             movedPiece.setLocation(lastMove.getOldLocation());
             //restore last captured piece
             addPiece(capturedPieceStack.pop(), lastMove.getCaptureLocation());
+        }
+        if (!moveStack.isEmpty()) {
+            lastMove = moveStack.peek();
+            if (lastMove.isCastle()) {
+                undoMove();
+            }
         }
     }
 
@@ -215,6 +224,14 @@ public class ChessBoard {
      */
     public void changeTurn() {
         turn = turn.getOpposite();
+    }
+
+    /**
+     * Sets current turn
+     * @param color current turn color
+     */
+    public void setTurn(PieceColor color) {
+        turn = color;
     }
 
     /**
@@ -290,10 +307,26 @@ public class ChessBoard {
                     Piece piece = Piece.getPiece(type, location);
                     tiles[i][col] = piece;
                     col += 1;
+                    if (type == PieceType.PAWN_WHITE) {
+                        if (piece.getLocation().getRow() != 6) {
+                            piece.pieceMoved();
+                        }
+                    }
+                    if (type == PieceType.PAWN_BLACK) {
+                        if (piece.getLocation().getRow() != 1) {
+                            piece.pieceMoved();
+                        }
+                    }
                     if (type == PieceType.KING_WHITE) {
+                        if (!piece.getLocation().equals(new Location(7, 4))) {
+                            piece.pieceMoved();
+                        }
                         kings.put(PieceColor.WHITE, (King) piece);
                     }
                     else if (type == PieceType.KING_BLACK) {
+                        if (!piece.getLocation().equals(new Location(0, 4))) {
+                            piece.pieceMoved();
+                        }
                         kings.put(PieceColor.BLACK, (King) piece);
                     }
                 }
@@ -382,7 +415,4 @@ public class ChessBoard {
         return clone;
     }
 
-    public long getZobristKey() {
-        return 0;
-    }
 }

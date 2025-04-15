@@ -3,8 +3,8 @@ package it.unibs.pajc.game.model.enums;
 public enum PieceType {
     KING_BLACK("King", "K", Integer.MAX_VALUE, PieceColor.BLACK),
     KING_WHITE("King", "k", Integer.MAX_VALUE, PieceColor.WHITE),
-    QUEEN_BLACK("Queen", "Q", 900, PieceColor.BLACK),
-    QUEEN_WHITE("Queen", "q", 900, PieceColor.WHITE),
+    QUEEN_BLACK("Queen", "Q", 1800, PieceColor.BLACK),
+    QUEEN_WHITE("Queen", "q", 1800, PieceColor.WHITE),
     ROOK_BLACK("Rook", "R", 500, PieceColor.BLACK),
     ROOK_WHITE("Rook", "r", 500, PieceColor.WHITE),
     KNIGHT_BLACK("Knight", "N", 300, PieceColor.BLACK),

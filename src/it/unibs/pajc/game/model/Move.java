@@ -20,6 +20,8 @@ public class Move implements Serializable {
     private final boolean isCapture;
     private final PieceType captureType;
     private final boolean isCheck;
+    private final boolean isCastle;
+    private final Move castleMove;
 
     /**
      * Constructor used for VIRTUAL moves with no capture
@@ -33,6 +35,24 @@ public class Move implements Serializable {
         this.isCapture = false;
         this.captureType = null;
         this.isCheck = false;
+        this.isCastle = false;
+        this.castleMove = null;
+    }
+
+    /**
+     * Constructor used for Castle moves
+     * @param oldLocation old king location
+     * @param newLocation new king location
+     */
+    public Move(Location oldLocation, Location newLocation, Move castleMove)     {
+        this.oldLocation = oldLocation;
+        this.newLocation = newLocation;
+        this.captureLocation = newLocation;
+        this.isCapture = false;
+        this.captureType = null;
+        this.isCheck = false;
+        this.isCastle = true;
+        this.castleMove = castleMove;
     }
 
     /**
@@ -49,13 +69,15 @@ public class Move implements Serializable {
         this.isCapture = isCapture;
         this.captureType = captureType;
         this.isCheck = isCheck;
+        this.isCastle = false;
+        this.castleMove = null;
     }
 
     /**
      * Constructor to specify if a move results in a capture
      * @param oldLocation old location
      * @param newLocation new location
-     * @param isCapture boolean describing if the move is a capture
+     * @param captureType capture type
      */
     public Move(Location oldLocation, Location newLocation, PieceType captureType) {
         this.oldLocation = oldLocation;
@@ -64,6 +86,8 @@ public class Move implements Serializable {
         this.isCapture = true;
         this.captureType = captureType;
         this.isCheck = false;
+        this.isCastle = false;
+        this.castleMove = null;
     }
 
     /**
@@ -80,6 +104,8 @@ public class Move implements Serializable {
         this.isCapture = true;
         this.captureType = captureType;
         this.isCheck = false;
+        this.isCastle = false;
+        this.castleMove = null;
     }
 
     /**
@@ -277,6 +303,14 @@ public class Move implements Serializable {
      */
     public boolean isCapture() {
         return isCapture;
+    }
+
+    public boolean isCastle() {
+        return isCastle;
+    }
+
+    public Move getCastleMove() {
+        return castleMove;
     }
 
     public PieceType getCaptureType() {

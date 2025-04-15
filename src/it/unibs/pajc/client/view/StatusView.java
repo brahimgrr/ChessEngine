@@ -1,19 +1,20 @@
 package it.unibs.pajc.client.view;
 
 import it.unibs.pajc.client.controller.BoardController;
+import it.unibs.pajc.game.model.Move;
+import it.unibs.pajc.game.model.Piece;
 import it.unibs.pajc.game.model.enums.PieceColor;
 
 import javax.swing.*;
 import javax.swing.text.DefaultCaret;
 import java.awt.*;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 
 public class StatusView extends JPanel {
+    private final BoardController controller;
     private final JTextArea movesHistoryArea;
     private final JPanel capturedPiecesPanel;
-    private final BoardController controller;
 
     public StatusView(BoardController boardController) {
         super(new BorderLayout());
@@ -28,7 +29,6 @@ public class StatusView extends JPanel {
 
         this.capturedPiecesPanel = new JPanel();
 
-        // Game status panel (Right)
         this.setPreferredSize(new Dimension(200, 600));
         //this.setBackground(Color.GRAY);
 
@@ -54,38 +54,23 @@ public class StatusView extends JPanel {
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
-        movesHistoryArea.setText(String.join("\n", controller.getMovesHistory()));
+
+        movesHistoryArea.setText(String.join("\n", controller.getTextMovesHistory()));
 
         capturedPiecesPanel.removeAll();
-        int width = capturedPiecesPanel.getWidth() / 8;  // Adjust this divisor as needed
-        int height = capturedPiecesPanel.getHeight() / 2; // Adjust based on your layout
 
-        for (List<Image> imgs : controller.getCaptures().values()) {
-            for (Image img : imgs) {
+        int width = capturedPiecesPanel.getWidth() / 8;
+        int height = capturedPiecesPanel.getHeight() / 2;
+
+        for (List<PieceView> captureViewList : controller.getCaptures().values()) {
+            for (PieceView captureView : captureViewList) {
+                Image captureImg = captureView.getPieceImage();
                 int dim = Math.min(width, height);
-                Image scaledPiece = img.getScaledInstance(dim, dim, Image.SCALE_SMOOTH);
+                Image scaledPiece = captureImg.getScaledInstance(dim, dim, Image.SCALE_SMOOTH);
                 JLabel pieceLabel = new JLabel(new ImageIcon(scaledPiece));
                 capturedPiecesPanel.add(pieceLabel);
             }
         }
-        capturedPiecesPanel.revalidate();
-        capturedPiecesPanel.repaint();
-    }
-
-
-    public void addMove(String move) {
-        controller.getMovesHistory().addLast(move);
-        //if (movesHistory.size() > 10) movesHistory.removeLast();
-        movesHistoryArea.setText(String.join("\n", controller.getMovesHistory()));
-    }
-
-    public void addCapturedPiece(Image piece) {
-        int width = capturedPiecesPanel.getWidth() / 8;  // Adjust this divisor as needed
-        int height = capturedPiecesPanel.getHeight() / 2; // Adjust based on your layout
-
-        Image scaledPiece = piece.getScaledInstance(width, height, Image.SCALE_SMOOTH);
-        JLabel pieceLabel = new JLabel(new ImageIcon(scaledPiece));
-        capturedPiecesPanel.add(pieceLabel);
         capturedPiecesPanel.revalidate();
         capturedPiecesPanel.repaint();
     }

@@ -23,23 +23,17 @@ import static it.unibs.pajc.client.utils.Constants.*;
  */
 public class ChessBoardView extends JPanel implements MouseMotionListener, MouseListener {
     private final BoardController controller;
-
     //current active player color
     private PieceColor turnColor;
-    //flag for inverted board
-    private boolean invertBoard = false;
     //selected piece location (NON-ABSOLUTE)
+    private PieceView selectedPiece = null;
     private Location selectedLocation = null;
     //focused tile (NON-ABSOLUTE)
     private Location focusedLocation = null;
     //last move made
     private Move lastMove = null;
-    //list of piece views
-    private final List<PieceView> pieces;
-
-    //ERRORE -> VA CHIESTO AL CONTROLLER
-    private PieceView selectedPiece = null;
-    //map of legal moves to be made
+    //list of piece VIEWS
+    private final List<PieceView> pieceViews;
 
     //move semaphore to handle locking
     private final Semaphore moveSemaphore = new Semaphore(0);
@@ -51,59 +45,29 @@ public class ChessBoardView extends JPanel implements MouseMotionListener, Mouse
         this.setBackground(Color.GRAY);
         this.controller = boardController;
         this.setPreferredSize(new Dimension(getTileSize() * 8, getTileSize() * 8));
-        this.pieces = new ArrayList<>();
+        this.pieceViews = new ArrayList<>();
         this.addMouseListener(this);
         this.addMouseMotionListener(this);
     }
 
     /**
-     * sets the board inverted flag
-     * @param invertBoard inverted board flag
+     * checks if the board is inverted
+     * @return boolean inverted board flag
      */
-    public void setInverted(boolean invertBoard) {
-        this.invertBoard = invertBoard;
+    public boolean isInverted() {
+        return controller.getMainPlayerColor() == PieceColor.BLACK;
     }
 
     /**
-     * sets the board pieces based on a fen string
-     * @param fenString fen string
+     * Sets the list of views representing pieces on board
+     * @param pieces pieces views
      */
-    public void setPieces(String fenString) {
-        // avoid concurrent modification
-        synchronized (pieces) {
-            pieces.clear();
-        }
-        int row = 0;
-        int col = 0;
-        for (char c : fenString.toCharArray()) {
-            if (c == '/') {
-                row++;
-                col = 0;
-            }
-            else {
-                if (Character.isDigit(c)) {
-                    int nullCounter = Integer.parseInt(Character.toString(c));
-                    col += nullCounter;
-                }
-                else {
-                    PieceType type = PieceType.getPieceType(String.valueOf(c));
-                    PieceView pieceView = new PieceView(type, new Location(row, col), getTileSize(), invertBoard);
-                    synchronized (pieces) {
-                        pieces.add(pieceView);
-                    }
-                    col += 1;
-                }
-            }
+    public void setPieceViews(List<PieceView> pieces) {
+        synchronized (pieceViews) {
+            pieceViews.clear();
+            pieceViews.addAll(pieces);
         }
         repaint();
-    }
-
-    /**
-     * sets last move made on board
-     * @param lastMove last move
-     */
-    public void setLastMove(Move lastMove) {
-        this.lastMove = lastMove;
     }
 
     @Override
@@ -115,7 +79,7 @@ public class ChessBoardView extends JPanel implements MouseMotionListener, Mouse
         drawBoard(g2d);
         drawTileWithFocus(g2d, selectedLocation);
         drawTileWithFocus(g2d, focusedLocation);
-        drawMoveTiles(g2d, lastMove);
+        drawLastMove(g2d);
         drawLegalMoves(g2d);
         drawPieces(g2d);
     }
@@ -128,13 +92,13 @@ public class ChessBoardView extends JPanel implements MouseMotionListener, Mouse
         if (this.selectedLocation == null) {
             return;
         }
-        Location absoluteLocation = invertBoard ? this.selectedLocation.invert() : this.selectedLocation;
+        Location absoluteLocation = isInverted() ? this.selectedLocation.invert() : this.selectedLocation;
         if (absoluteLocation == null || controller.getLegalMoves().get(absoluteLocation) == null) {
             return;
         }
         Set<Move> moves = controller.getLegalMoves().get(absoluteLocation);
         for (Move move : moves) {
-            Location targetLocation = move.getNewLocation().invert(invertBoard);
+            Location targetLocation = move.getNewLocation().invert(isInverted());
 
             int circleSize;
             if (move.isCapture()) {
@@ -154,13 +118,14 @@ public class ChessBoardView extends JPanel implements MouseMotionListener, Mouse
     /**
      * draw the last move tiles with focus
      * @param g2d graphics
-     * @param lastMove last move
      */
-    private void drawMoveTiles(Graphics2D g2d, Move lastMove) {
+    private void drawLastMove(Graphics2D g2d) {
+        Move lastMove = controller.getLastMove();
+
         if (lastMove == null) return;
 
-        drawTileWithFocus(g2d, lastMove.getOldLocation(), invertBoard);
-        drawTileWithFocus(g2d, lastMove.getNewLocation(), invertBoard);
+        drawTileWithFocus(g2d, lastMove.getOldLocation(), isInverted());
+        drawTileWithFocus(g2d, lastMove.getNewLocation(), isInverted());
     }
 
     /**
@@ -181,8 +146,8 @@ public class ChessBoardView extends JPanel implements MouseMotionListener, Mouse
      * @param g2s graphics
      */
     private void drawPieces(Graphics2D g2s) {
-        synchronized (pieces) {
-            for (PieceView piece : pieces) {
+        synchronized (pieceViews) {
+            for (PieceView piece : pieceViews) {
                 piece.paint(g2s, getTileSize());
             }
         }
@@ -224,7 +189,7 @@ public class ChessBoardView extends JPanel implements MouseMotionListener, Mouse
      * calling thread is locked
      * @param turn player queried
      * @return move made
-     * @throws InterruptedException
+     * @throws InterruptedException board interrupted while requesting move
      */
     public Move requireMove(PieceColor turn) throws InterruptedException {
         this.turnColor = turn;
@@ -249,12 +214,16 @@ public class ChessBoardView extends JPanel implements MouseMotionListener, Mouse
      * @param currentLocation absolute location
      */
     private void removePieceAt(Location currentLocation) {
-        synchronized (pieces) {
-            PieceView pieceView = pieces.stream().filter(p -> p.getLocation().equals(currentLocation)).findFirst().orElse(null);
-            pieces.remove(pieceView);
+        synchronized (pieceViews) {
+            PieceView pieceView = pieceViews.stream().filter(p -> p.getLocation().equals(currentLocation)).findFirst().orElse(null);
+            pieceViews.remove(pieceView);
         }
     }
 
+    /**
+     * Returns tile size calculated based on screen size
+     * @return tile size
+     */
     private int getTileSize() {
         if (getParent() != null) {
             Dimension parentDimension = getSize();
@@ -265,7 +234,6 @@ public class ChessBoardView extends JPanel implements MouseMotionListener, Mouse
             return TILE_SIZE;
         }
     }
-
 
     @Override
     public void mouseClicked(MouseEvent e) {
@@ -278,9 +246,9 @@ public class ChessBoardView extends JPanel implements MouseMotionListener, Mouse
      */
     @Override
     public void mousePressed(MouseEvent e) {
-        Location currentLocation = PieceView.pointerToLocation(e, getTileSize(), invertBoard);
+        Location currentLocation = PieceView.pointerToLocation(e, getTileSize(), isInverted());
         selectedLocation = PieceView.pointerToLocation(e, getTileSize());
-        pieces.stream().filter(p -> p.getLocation().equals(currentLocation)).findFirst().ifPresent(currentPiece -> this.selectedPiece = currentPiece);
+        pieceViews.stream().filter(p -> p.getLocation().equals(currentLocation)).findFirst().ifPresent(currentPiece -> this.selectedPiece = currentPiece);
 
         repaint();
     }
@@ -292,7 +260,7 @@ public class ChessBoardView extends JPanel implements MouseMotionListener, Mouse
      */
     @Override
     public void mouseReleased(MouseEvent e) {
-        Location currentLocation = PieceView.pointerToLocation(e, getTileSize(), invertBoard);
+        Location currentLocation = PieceView.pointerToLocation(e, getTileSize(), isInverted());
         selectedLocation = null;
         if (currentLocation != null && selectedPiece != null) {
 
@@ -330,11 +298,11 @@ public class ChessBoardView extends JPanel implements MouseMotionListener, Mouse
                 }
             }
 
-            selectedPiece.resetScreenLocation(getTileSize());
+            selectedPiece.resetScreenLocation(isInverted());
             selectedPiece = null;
         }
         else if (currentLocation == null && selectedPiece != null) {
-            selectedPiece.resetScreenLocation(getTileSize());
+            selectedPiece.resetScreenLocation(isInverted());
             selectedPiece = null;
         }
         repaint();
@@ -358,7 +326,7 @@ public class ChessBoardView extends JPanel implements MouseMotionListener, Mouse
     public void mouseExited(MouseEvent e) {
         focusedLocation = null;
         if (selectedPiece != null) {
-            selectedPiece.resetScreenLocation(getTileSize());
+            selectedPiece.resetScreenLocation(isInverted());
         }
         repaint();
     }

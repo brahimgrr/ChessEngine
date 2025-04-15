@@ -108,7 +108,6 @@ public class RemotePlayer extends Player {
     /**
      * send the game state to the remote player
      * @param gameState the current state of the game.
-     * @throws IOException
      */
     @Override
     public void setGameState(GameState gameState) throws IOException {
@@ -133,8 +132,7 @@ public class RemotePlayer extends Player {
             log("SENT REQUEST");
             Object response = input.readObject();
             log("RECEIVE RESPONSE");
-            if (response instanceof NetPacket && ((NetPacket) response).data instanceof PieceColor) {
-                NetPacket responsePacket = (NetPacket) response;
+            if (response instanceof NetPacket responsePacket && ((NetPacket) response).data instanceof PieceColor) {
                 //requireBot flag is set
                 if (responsePacket.options instanceof Boolean) {
                     //update current player with the requireBot flag
@@ -161,27 +159,41 @@ public class RemotePlayer extends Player {
     @Override
     public void setColor(PieceColor color) {
         super.setColor(color);
+        try {
+            log("setPlayerColor");
+            NetPacket packet = new NetPacket(NetPacket.SET_PLAYER_COLOR, color);
+            output.writeObject(packet);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
+    /**
+     * Pings remote player and returns state of operation
+     * @return boolean representing if client is alive
+     */
     @Override
     public boolean isAlive() {
-        if (socket == null || socket.isClosed() || !socket.isConnected()) {
-            log(getColor() + ": Cannot check connection, socket state invalid.");
-            return false;
-        }
-
         try {
-            // Temporarily set a read timeout for the PONG response
+            if (socket == null || socket.isClosed() || !socket.isConnected()) {
+                log(getColor() + ": Cannot check connection, socket state invalid.");
+                return false;
+            }
+            // temp timer for ping request
             int originalSoTimeout = socket.getSoTimeout();
-            //socket.setSoTimeout(20_000); // e.g., 2000 ms
+            socket.setSoTimeout(20_000); //20s
 
             log(getColor() + ": Sending PING");
 
             NetPacket request = new NetPacket(NetPacket.PING, null);
             output.writeObject(request);
             log("SENT PING");
+
             Object response = input.readObject();
             log("RECEIVE RESPONSE");
+
+            socket.setSoTimeout(originalSoTimeout);
+
             if (response instanceof NetPacket && Objects.equals(((NetPacket) response).type, NetPacket.PONG)) {
                 log(getColor() + ": Received PONG");
                 return  true;
@@ -190,16 +202,10 @@ public class RemotePlayer extends Player {
                 return false;
             }
         } catch (SocketTimeoutException e) {
-            // Timeout occurred - no PONG received in time
             log(getColor() + ": PING timed out.");
             return false;
-        } catch (IOException e) {
-            // Other network error during send/receive
+        } catch (IOException | ClassNotFoundException e) {
             log(getColor() + ": IOException during PING/PONG: " + e.getMessage());
-            return false;
-        } catch (Exception e) {
-            // Catch any other potential issues
-            log(getColor() + ": Unexpected error during PING/PONG: " + e.getMessage());
             return false;
         }
     }

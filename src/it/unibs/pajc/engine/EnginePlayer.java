@@ -12,22 +12,21 @@ import java.util.concurrent.*;
  * Class representing an AI player
  */
 public class EnginePlayer extends Player {
-    //reference to the game board
     private final ChessBoard board;
     //executor to launch the best move calculation
     private final ExecutorService executor;
 
     /**
      * Default constructor
-     * @param board the board on which the game is played
      */
-    public EnginePlayer(ChessBoard board) {
-        this.board = board;
+    public EnginePlayer() {
+        this.board = new ChessBoard();
         this.executor = Executors.newSingleThreadExecutor();
     }
 
     @Override
     public void setPosition(String fenString) {
+        board.setPosition(fenString);
     }
 
     @Override
@@ -54,6 +53,7 @@ public class EnginePlayer extends Player {
      */
     @Override
     public Move requireMove() throws InterruptedException {
+        board.setTurn(getColor());
         Future<Move> future = executor.submit(new ChessAI(board.clone()));
 
         try {

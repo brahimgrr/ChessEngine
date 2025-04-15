@@ -15,6 +15,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
+import static it.unibs.pajc.client.utils.Constants.MIN_HEIGHT;
+import static it.unibs.pajc.client.utils.Constants.MIN_WIDTH;
+
 /**
  * Frame to handle game selection
  */
@@ -23,6 +26,7 @@ public class GameSelectionFrame extends JFrame {
     private JTextField serverPortField;
     private JRadioButton whiteBot;
     private JRadioButton blackBot;
+    private ButtonGroup onlineColorGroup;
     private JRadioButton whiteOnline;
     private JRadioButton blackOnline;
 
@@ -32,7 +36,7 @@ public class GameSelectionFrame extends JFrame {
 
     public GameSelectionFrame() {
         setTitle("Chess");
-        setSize(420, 500);
+        setSize(420, 540);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setResizable(false);
         setLocation(100,100);
@@ -106,7 +110,7 @@ public class GameSelectionFrame extends JFrame {
         radioPanel.add(blackBot);
 
         JButton startBotButton = new JButton("Start Bot Game");
-        startBotButton.addActionListener(e -> startOnlineGame(true));
+        startBotButton.addActionListener(e -> startOnlineGame(true, null));
 
         panel.add(radioPanel);
         panel.add(Box.createVerticalStrut(10));
@@ -129,9 +133,9 @@ public class GameSelectionFrame extends JFrame {
         whiteOnline = new JRadioButton("White", true);
         blackOnline = new JRadioButton("Black");
 
-        ButtonGroup colorGroup = new ButtonGroup();
-        colorGroup.add(whiteOnline);
-        colorGroup.add(blackOnline);
+        onlineColorGroup = new ButtonGroup();
+        onlineColorGroup.add(whiteOnline);
+        onlineColorGroup.add(blackOnline);
 
         gbc.gridx = 0;
         gbc.gridy = 0;
@@ -152,12 +156,20 @@ public class GameSelectionFrame extends JFrame {
         panel.add(blackOnline, gbc);
 
         JButton startOnline = new JButton("Start Online Game");
-        startOnline.addActionListener(e -> startOnlineGame(false));
+        startOnline.addActionListener(e -> startOnlineGame(false, null));
 
         gbc.gridx = 0;
         gbc.gridy = 3;
         gbc.gridwidth = 2;
         panel.add(startOnline, gbc);
+
+        JButton startMultipleOnline = new JButton("Start Multiple Games");
+        startMultipleOnline.addActionListener(e -> startMultipleOnlineGames());
+
+        gbc.gridx = 0;
+        gbc.gridy = 4;
+        gbc.gridwidth = 2;
+        panel.add(startMultipleOnline, gbc);
 
         return panel;
     }
@@ -183,7 +195,31 @@ public class GameSelectionFrame extends JFrame {
         gameCounter++;
     }
 
-    private void startOnlineGame(boolean requireBot) {
+    private void startMultipleOnlineGames() {
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 2; j++) {
+                onlineColorGroup.clearSelection();
+                if (j == 0) {
+                    whiteOnline.setSelected(true);
+                }
+                else {
+                    blackOnline.setSelected(true);
+                }
+
+                Point screenLocation = new Point(i * MIN_WIDTH, j * MIN_HEIGHT);
+
+                startOnlineGame(false, screenLocation);
+
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+    }
+
+    private void startOnlineGame(boolean requireBot, Point screenLocation) {
         String ip = serverIpField.getText();
         String portString = serverPortField.getText();
         int port = Integer.parseInt(portString);
@@ -197,7 +233,7 @@ public class GameSelectionFrame extends JFrame {
         //JOptionPane.showMessageDialog(this, "Connecting to " + ip + ":" + port + " as " + color);
         PieceColor playerColor = color.equals("White") ? PieceColor.WHITE : PieceColor.BLACK;
 
-        BoardController boardController = new BoardController();
+        BoardController boardController = new BoardController(screenLocation);
         GuiPlayer guiPlayer = new GuiPlayer(playerColor, boardController);
 
         RemoteGameController remoteGameController = new RemoteGameController(gameCounter, guiPlayer, ip, port, requireBot);

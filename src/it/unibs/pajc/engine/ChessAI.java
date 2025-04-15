@@ -23,6 +23,10 @@ public class ChessAI implements Callable<Move> {
         MoveMap legalMoves = board.getLegalMoves(board.getTurn());
 
         List<Move> sortedMoves = getSortedMoves(board, legalMoves);
+
+        List<Move> valuatedMoves = new ArrayList<>();
+        List<Integer> evaluations = new ArrayList<>();
+
         for (Move move : sortedMoves) {
             board._movePiece(move);
             board.changeTurn();
@@ -32,12 +36,20 @@ public class ChessAI implements Callable<Move> {
             if (moveValue > bestValue) {
                 bestValue = moveValue;
                 bestMove = move;
+                valuatedMoves.add(move);
+                evaluations.add(moveValue);
             }
         }
         System.out.println("No. evaluated moves: " + evaluatedCounter);
         evaluatedCounter = 0;
+
         if (bestMove == null && !legalMoves.getAllMoves().isEmpty()) {
-            return legalMoves.getAllMoves().get(0);
+            bestMove =  legalMoves.getAllMoves().get(0);
+        }
+
+        if (valuatedMoves.size() > 2 && evaluations.get(evaluations.size() - 1) - evaluations.get(evaluations.size() - 2) < 15) {
+            System.out.println("-> Randomized");
+            bestMove = valuatedMoves.get((int) (Math.random() * 3));
         }
         return bestMove;
     }

@@ -9,7 +9,6 @@ import it.unibs.pajc.game.model.enums.PieceColor;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -20,22 +19,20 @@ import java.util.concurrent.Future;
  */
 public class GameController implements Runnable{
     private final int gameId;
-
+    // game chess board
     private final ChessBoard board;
-
     //player map, base on color
     private final Map<PieceColor, Player> playerMap;
     //thread on which the game is running
     private Thread gameThread;
-
     //game spectator, will only receive board positions and states
     private Player spectatorPlayer;
-
     //state of the GameController
     private boolean isPlaying;
-
+    // Executor for async move request
+    ExecutorService moveExecutor = Executors.newSingleThreadExecutor();
     //last move made
-    private Move move;
+    private Move lastMove;
 
     /**
      * Constructor of GameController
@@ -50,10 +47,10 @@ public class GameController implements Runnable{
         this.board = new ChessBoard();
         this.playerMap = new HashMap<>();
         if (blackPlayer == null) {
-            blackPlayer = new EnginePlayer(board);
+            blackPlayer = new EnginePlayer();
         }
         if (whitePlayer == null) {
-            whitePlayer = new EnginePlayer(board);
+            whitePlayer = new EnginePlayer();
         }
         this.playerMap.put(PieceColor.WHITE, whitePlayer);
         this.playerMap.put(PieceColor.BLACK, blackPlayer);
@@ -102,7 +99,10 @@ public class GameController implements Runnable{
             playerMap.forEach( (color, player) -> {player.terminate();});
             Thread.currentThread().interrupt(); // Preserve the interrupt flag
         }
-        log("Game loop terminated!");
+        finally {
+            moveExecutor.shutdownNow();
+            log("Game loop terminated!");
+        }
     }
 
     /**
@@ -122,15 +122,15 @@ public class GameController implements Runnable{
 
         // Update spectator view if present
         if (spectatorPlayer != null) {
-            if (move != null) {
-                spectatorPlayer.setLastMove(move);
+            if (lastMove != null) {
+                spectatorPlayer.setLastMove(lastMove);
             }
             spectatorPlayer.setPosition(board.getPosition());
         }
 
         // Inform players of the current position and last move
         for (Player player : playerMap.values()) {
-            player.setLastMove(move);
+            player.setLastMove(lastMove);
             player.setPosition(board.getPosition());
         }
 
@@ -140,58 +140,44 @@ public class GameController implements Runnable{
             Player currentPlayer = playerMap.get(turn);
 
             currentPlayer.setLegalMoves(board.getLegalMoves(turn));
-            /*
-            try {
-                move = currentPlayer.requireMove();
-            } catch (Exception e) {
-                throw new InterruptedException(e.getMessage());
-            }
 
-            if (move == null) {
-                log("No valid move received!");
-                return false; // Prevent an invalid move from breaking the game loop
-            }*/
-
-
-            ExecutorService executor = Executors.newSingleThreadExecutor();
-            Future<Boolean> moveFuture = executor.submit(() -> {
+            Future<Move> moveFuture = moveExecutor.submit(() -> {
                 try {
                     // Wait for the player's move
-                    move = currentPlayer.requireMove();
-                    return move != null;
+                    lastMove = currentPlayer.requireMove();
+
+                    return lastMove;
                 } catch (Exception e) {
                     log("Error receiving move: " + e.getMessage());
-                    return false;
+                    return null;
                 }
             });
+
             while (true) {
                 if (!isOpponentConnected(currentPlayer)) {
                     log("Opponent disconnected!");
-
-                    executor.shutdownNow(); // Stop waiting for the move
 
                     throw new InterruptedException("Opponent disconnected");
                 }
 
                 if (moveFuture.isDone()) {
-                    if (!moveFuture.resultNow() || move == null) {
-                        log("No valid move received!");
+                    if (moveFuture.resultNow() == null) {
+                        log("moveExecutor: No valid move received!");
                         throw new InterruptedException("Player disconnected");
                     }
                     break;
                 }
 
                 try {
-                    Thread.sleep(1000); // Check every second (adjust as needed)
+                    Thread.sleep(1000);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     return false;
                 }
             }
 
-
-            board.movePiece(move, true);
-            gameLog("MOVE " + turn.getName() + " : " + move);
+            board.movePiece(lastMove, true);
+            gameLog("MOVE " + turn.getName() + " : " + lastMove);
             board.changeTurn();
             //Thread.sleep(100);
             return true;
@@ -210,6 +196,11 @@ public class GameController implements Runnable{
         return false;
     }
 
+    /**
+     * Ping to check if opponent player is still connected
+     * @param currentPlayer current player
+     * @return boolean representing opponent connection state
+     */
     private boolean isOpponentConnected(Player currentPlayer) {
         PieceColor opponentColor = currentPlayer.getColor().getOpposite();
         Player opponent = playerMap.get(opponentColor);

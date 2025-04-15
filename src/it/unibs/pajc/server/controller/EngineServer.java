@@ -1,6 +1,7 @@
 package it.unibs.pajc.server.controller;
 
 import it.unibs.pajc.client.controller.RemoteGameController;
+import it.unibs.pajc.engine.EnginePlayer;
 import it.unibs.pajc.game.model.enums.PieceColor;
 import it.unibs.pajc.server.utils.NetworkConstants;
 
@@ -57,8 +58,15 @@ public class EngineServer {
         }
     }
 
+    /**
+     * Launches an engine client with the provided socket
+     * @param playerSocket socket connected to game server
+     */
     private static void handleClientConnection(Socket playerSocket) {
-        //RemoteGameController remoteGameController = new RemoteGameController();
+        EnginePlayer player = new EnginePlayer();
+        RemoteGameController remoteGameController = new RemoteGameController(gameCounter, player, playerSocket);
+        executor.submit(remoteGameController);
+        gameCounter++;
     }
 
     /**

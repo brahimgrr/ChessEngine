@@ -14,4 +14,6 @@ public class Constants {
     public static final Color LIGHT_TILE = new Color (238,238,210);
     public static final Color DARK_FOCUSED_TILE = DARK_TILE.brighter();
     public static final Color LIGHT_FOCUSED_TILE = LIGHT_TILE.darker();
+    public static final int MIN_HEIGHT = 450;
+    public static final int MIN_WIDTH = 600;
 }

@@ -96,7 +96,7 @@ public class GameServer {
             }
         } catch (IOException e) {
             try {
-                if (playerSocket != null && playerSocket.isConnected()) {
+                if (playerSocket.isConnected()) {
                     playerSocket.close();
                 }
             } catch (IOException es) {
@@ -114,18 +114,17 @@ public class GameServer {
     private static void botGameMatch(RemotePlayer player) throws IOException {
         Player whitePlayer;
         Player blackPlayer;
-        //Game controller automatically assigns a BOT when a player is null
-        //Socket engineSocket = new Socket(NetworkConstants.SERVER_IP, NetworkConstants.ENGINE_PORT);
+
+        Socket engineSocket = new Socket(NetworkConstants.SERVER_IP, NetworkConstants.ENGINE_PORT);
+
         if (player.getColor() == PieceColor.WHITE) {
             whitePlayer = player;
 
-            blackPlayer = null;
-
-            //blackPlayer = new RemotePlayer(engineSocket);
+            blackPlayer = new RemotePlayer(engineSocket);
         }
         else {
-            whitePlayer = null;
-            //whitePlayer = new RemotePlayer(engineSocket);
+            whitePlayer = new RemotePlayer(engineSocket);
+
             blackPlayer = player;
         }
         System.out.println("Starting BOT game " + gameCounter);

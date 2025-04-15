@@ -5,33 +5,41 @@ import it.unibs.pajc.client.controller.BoardController;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
-import java.util.LinkedList;
+
+import static it.unibs.pajc.client.utils.Constants.MIN_HEIGHT;
+import static it.unibs.pajc.client.utils.Constants.MIN_WIDTH;
 
 /**
  * Frame containing the chessboard view
  */
 public class MainFrame extends JFrame {
     private final ChessBoardView chessBoardView;
-    private final StatusView statusPanel;
+    private final StatusView statusPanelView;
 
-    public MainFrame(BoardController boardController) {
+    public MainFrame(BoardController boardController, Point location) {
         this.chessBoardView = new ChessBoardView(boardController);
-        this.statusPanel = new StatusView(boardController);
+        this.statusPanelView = new StatusView(boardController);
 
-        initialize();
+        initialize(location);
     }
 
-    private void initialize() {
-        //this.setMinimumSize(new Dimension(800, 600));
-        this.setMinimumSize(new Dimension(600, 450));
+    private void initialize(Point location) {
+
+        this.setMinimumSize(new Dimension(MIN_WIDTH, MIN_HEIGHT));
         this.getContentPane().setLayout(new BorderLayout());
         //this.getContentPane().setBackground(Color.gray);
         this.setTitle("Chess");
         this.setResizable(true);
         this.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        this.setLocationRelativeTo(null);
-        //this.setSize(800, 600);
-        this.setSize(600, 450);
+
+        if (location != null) {
+            this.setLocation(location);
+        }
+        else {
+            this.setLocationRelativeTo(null);
+        }
+
+        this.setSize(MIN_WIDTH, MIN_HEIGHT);
 
         ImageIcon icon = new ImageIcon("res/icon.png"); // Replace with your icon path
         setIconImage(icon.getImage());
@@ -57,12 +65,12 @@ public class MainFrame extends JFrame {
         this.addComponentListener(new ComponentAdapter() {
             @Override
             public void componentResized(ComponentEvent e) {
-                resizeFrame(chessBoardWrapper, statusPanel);
+                resizeFrame(chessBoardWrapper, statusPanelView);
             }
         });
 
         // Adding components
-        container.add(statusPanel, BorderLayout.EAST);
+        container.add(statusPanelView, BorderLayout.EAST);
         container.add(chessBoardWrapper, BorderLayout.CENTER);
 
         this.add(container);
@@ -88,7 +96,7 @@ public class MainFrame extends JFrame {
         return chessBoardView;
     }
 
-    public StatusView getStatusPanel() {
-        return statusPanel;
+    public StatusView getStatusPanelView() {
+        return statusPanelView;
     }
 }
